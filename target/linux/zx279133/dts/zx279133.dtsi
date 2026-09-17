@@ -1,0 +1,137 @@
+// SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
+/*
+ * Minimal ZX279133 platform for SK-D840N RAM bring-up.
+ * Addresses and interrupt wiring come from the stock SK-D840N DT.
+ * Clock/reset ABI and UART support derive from cnjn's SR1010 port;
+ * see ../docs/RESEARCH.md for provenance and unverified assumptions.
+ */
+
+#include <dt-bindings/clock/zte,zx279133-lsp.h>
+#include <dt-bindings/clock/zte,zx279133-topcrm.h>
+#include <dt-bindings/reset/zte,zx279133-lsp.h>
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+
+/ {
+	#address-cells = <2>;
+	#size-cells = <2>;
+	interrupt-parent = <&gic>;
+
+	osc25m: oscillator-25m {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <25000000>;
+	};
+
+	/* Vendor DT frequencies; firmware handoff still needs live verification. */
+	pll_lsp: clock-pll-lsp {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <2000000000>;
+	};
+
+	pll_1376m: clock-pll-1376m {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <1376256000>;
+	};
+
+	pll_fpp: clock-pll-fpp {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <2500000000>;
+	};
+
+	pll_cpu: clock-pll-cpu {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <2000000000>;
+	};
+
+	cpus {
+		#address-cells = <2>;
+		#size-cells = <0>;
+
+		cpu0: cpu@0 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a53";
+			reg = <0 0>;
+			enable-method = "psci";
+		};
+
+		cpu1: cpu@1 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a53";
+			reg = <0 1>;
+			enable-method = "psci";
+		};
+	};
+
+	psci {
+		compatible = "arm,psci-0.2";
+		method = "smc";
+	};
+
+	gic: interrupt-controller@500000 {
+		compatible = "arm,gic-v3";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		#interrupt-cells = <3>;
+		interrupt-controller;
+		reg = <0 0x00500000 0 0x10000>,
+		      <0 0x00540000 0 0x80000>;
+		interrupts = <GIC_PPI 9 IRQ_TYPE_LEVEL_HIGH>;
+	};
+
+	timer {
+		compatible = "arm,armv8-timer";
+		/* Exact PPI numbers and polarity from the stock DT. */
+		interrupts = <GIC_PPI 13 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_LOW)>,
+		             <GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_LOW)>,
+		             <GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_LOW)>,
+		             <GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_LOW)>;
+	};
+
+	soc {
+		compatible = "simple-bus";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		topcrm: clock-controller@10e10000 {
+			compatible = "zte,zx279133-topcrm", "syscon";
+			reg = <0 0x10e10000 0 0x60>;
+			clocks = <&osc25m>, <&pll_lsp>, <&pll_1376m>,
+			         <&pll_fpp>, <&pll_cpu>;
+			clock-names = "osc25m", "pll-lsp", "pll-1376m", "pll-fpp", "pll-cpu";
+			#clock-cells = <1>;
+		};
+
+		lsp0_clk: clock-controller@10d00000 {
+			compatible = "zte,zx279133-lsp-clk", "syscon";
+			reg = <0 0x10d00000 0 0x100>;
+			clocks = <&topcrm ZX279133_TOPCRM_CLK_LSP0_PCLK>,
+			         <&topcrm ZX279133_TOPCRM_CLK_LSP0_25M>,
+			         <&topcrm ZX279133_TOPCRM_CLK_LSP0_100M>,
+			         <&topcrm ZX279133_TOPCRM_CLK_SPIFC_WCLK>;
+			clock-names = "pclk", "wclk25", "wclk100", "spifc_wclk";
+			#clock-cells = <1>;
+			#reset-cells = <1>;
+		};
+
+		uart0: serial@10d0d000 {
+			compatible = "zte,zx279133-uart", "arm,pl011", "arm,primecell";
+			arm,primecell-periphid = <0x001feffe>;
+			reg = <0 0x10d0d000 0 0x1000>;
+			interrupts = <GIC_SPI 31 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&lsp0_clk ZX279133_LSP_CLK_UART0_WCLK>,
+			         <&lsp0_clk ZX279133_LSP_CLK_UART0_PCLK>;
+			clock-names = "uartclk", "apb_pclk";
+			resets = <&lsp0_clk ZX279133_LSP_RESET_UART0>;
+			/* Match the clock selected when the full UART driver takes over. */
+			assigned-clocks = <&lsp0_clk ZX279133_LSP_CLK_UART0_WCLK>;
+			assigned-clock-parents = <&topcrm ZX279133_TOPCRM_CLK_LSP0_25M>;
+			assigned-clock-rates = <25000000>;
+			status = "disabled";
+		};
+	};
+};

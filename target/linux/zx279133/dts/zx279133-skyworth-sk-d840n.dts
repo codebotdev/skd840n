@@ -1,0 +1,51 @@
+// SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
+/* Experimental RAM bring-up; no persistent-storage or network support. */
+/dts-v1/;
+
+#include "zx279133.dtsi"
+
+/ {
+	model = "Skyworth SK-D840N";
+	compatible = "skyworth,sk-d840n", "zte,zx279133";
+
+	aliases {
+		serial0 = &uart0;
+	};
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+		/* zteuart requires the external ZTE PL011 patch. */
+		bootargs = "console=ttyAMA0,115200n8 earlycon=zteuart,0x10d0d000 rdinit=/init maxcpus=1 clk_ignore_unused loglevel=8";
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0 0x80000000 0 0x20000000>;
+	};
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		/*
+		 * Size/alignment retained from stock. The stock pool is dynamic:
+		 * this DOES NOT prove the new allocation matches firmware DMA.
+		 * Confirm DMA is quiescent before a RAM boot; see ../docs/RESEARCH.md.
+		 */
+		pon_reserve {
+			size = <0 0x03245000>;
+			alignment = <0 0x1000>;
+		};
+
+		/* Retain the stock fixed reservation until WOE is understood. */
+		woe_reserved: buffer@91000000 {
+			reg = <0 0x91000000 0 0x02000000>;
+			no-map;
+		};
+	};
+};
+
+&uart0 {
+	status = "okay";
+};

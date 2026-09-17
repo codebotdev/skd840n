@@ -1,0 +1,138 @@
+# SK-D840N 适配研究与修改记录
+
+## 2026-09-17：v1，建立可供异机编译的 RAM 启动实现
+
+用户目标：先做四网口有线路由器，光口后续研究；本地不编译，只修改、检查并提交代码。
+v1 的实际交付是串口/RAM bring-up，实现现代内核启动所需的基础支持。
+**编译结果、能否实机启动、四网口可用性均未获得验证。**
+
+### 基线与证据
+
+| 来源 | 固定版本 / 内容 | 用途 |
+|---|---|---|
+| ImmortalWrt | v25.12.2，`4fc16f2985a358bd43bb522e43f05395fcbd6ed5` | 实际开发基线，保留其 Linux 6.12.103 |
+| Linux 发布源码 | `linux-6.12.103.tar.xz`，SHA256 `f143aaade8877ba5616e788b4482576db28481bcf557ef537f4fcc3938fc3176` | 核对接口、ARM64 header，并进行补丁应用检查 |
+| 本机备份 | 工作区 `skd840nbackup/`、原厂 DT、`close_uart_ttl.log` | RAM、UART、中断、PSCI、闪存和原厂启动行为 |
+| 先前研究 | 工作区 `bringup-planning/`，尤其 HARDWARE.md、PLAN.md 和 evidence/stock-board.decompiled.dts | 硬件和镜像证据汇总；不要求编译机具有这些文件 |
+| SK-D840N 参考项目 | `huxiangjs/SK-D840N-OpenWRT`，`011319bed96959107423a223e975b6e78d87ce68`；用户提供 firmware_v2.0.zip | 参考初始化流程与网口映射，不导入其旧内核或模块 |
+| 同 SoC 社区移植 | `cnjn/linux-mainline-zte-zxslc-sr1010`，`07f8687248578d4be6931c665ff5d08bb6cc3d9d` | 时钟驱动、DT 头文件，以及 UART 补丁的来源 |
+
+外部原始来源：
+
+- [ImmortalWrt v25.12.2](https://github.com/immortalwrt/immortalwrt/tree/v25.12.2)
+- [Linux 6.12.103](https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.12.103.tar.xz)
+- [Linux ARM64 启动约定](https://www.kernel.org/doc/html/v6.12/arch/arm64/booting.html)
+- [SK-D840N 参考工程固定版本](https://github.com/huxiangjs/SK-D840N-OpenWRT/tree/011319bed96959107423a223e975b6e78d87ce68)
+- [ZX279133 社区源码固定版本](https://github.com/cnjn/linux-mainline-zte-zxslc-sr1010/tree/07f8687248578d4be6931c665ff5d08bb6cc3d9d)
+
+社区项目名称含 mainline，不代表其 ZX279133 板级支持已经进入 Linux 主线。
+这里的 UART、时钟和 DT ABI 是本 target 自带的下游支持。
+
+### 已知硬件及不能套用的假设
+
+- 本机为 ZX279133、2×Cortex-A53、512 MiB RAM，内存起点 `0x80000000`。
+  原厂运行日志证明 PSCI SMC、GICv3 和 25 MHz architected timer 可用。
+- UART0 地址 `0x10d0d000`，SPI 31，原厂 AMBA ID `0x001feffe`。
+  它与标准 PL011 的寄存器偏移、访问宽度和部分状态位不同，不能只写 `arm,pl011`。
+- 本机 NAND 日志为 Winbond `ef aa 22` / 256 MiB；参考照片是 GigaDevice，不能按照片写死。
+- 四网口候选映射：2.5G 对应 MAC4，三个 GE 对应 MAC1/2/3，来自参考工程私有
+  `/dev/ethdriver` 初始化。还不是现代 netdev/DSA 驱动的可用映射。
+- 本机 PHY 软件命名 RTL8226/rlt8226b，参考照片可读 RTL8221B；准确 PHY ID 和后缀待采集。
+- SR1010 的 ZX279051 WAN PHY、RTL8372N 外置交换机及 10G CPU 链路与本机不同。
+  不复制其 Ethernet DTS、PHY 地址、GPIO reset 或交换机配置。
+- 原厂/参考微码 `mcode_133.bin` SHA256 为
+  `251acd2858aa1486dac66386842285a3e4aef55a5335891da5d595b937084db0`，
+  CRC32 `c839b946`；社区网络驱动的已校准微码 CRC 为 `ef1d7647`。
+  两者不一致，导入社区网络驱动之前必须核对微码 ABI、NP/FPP 寄存器和队列格式。
+
+### 本次修改
+
+| 文件 / 目录 | 修改与原因 |
+|---|---|
+| Makefile | 新建 aarch64/cortex-a53 target；仅 ramdisk/fpu 特性；保留 Linux 6.12；删除默认 mtd 和路由器/UI 扩展包 |
+| generic/target.mk | 标准 generic 子目标，与设备 profile、配置种子和镜像选择规则保持一致 |
+| config-6.12 | 启用 GICv3、PSCI、标准 timer、OF、时钟/reset、ZTE 适配后的 PL011；双核构建；关闭 MTD、SPI、PCI、USB、watchdog；不启用 KASLR |
+| dts/zx279133.dtsi | 从本机 DT 提取 CPU/中断/串口/时钟最低集合，采用社区现代 clock/reset ABI；没有 NAND、网络和 PON 设备节点 |
+| dts/zx279133-skyworth-sk-d840n.dts | 新板兼容串、512 MiB RAM、串口与保留内存；单核首启、保持未使用时钟；`rdinit=/init` |
+| files-6.12/drivers/clk/clk-zx279133.c | 导入社区时钟/reset 驱动；A53 mux 强制只读，去除对未导入实验性 cpufreq 配置的依赖 |
+| files-6.12/include/dt-bindings/ | 导入 TOPCRM/LSP 时钟及 LSP reset 编号，供 DTS 和驱动共同使用 |
+| patches-6.12/100-* | 将时钟驱动挂接至 Kconfig/Kbuild；无需额外 RESET_SIMPLE 驱动 |
+| patches-6.12/110-* | 从社区 consolidated patch 0001 提取 UART 修改并重定位到 6.12.103；加入 ZTE offsets、32-bit IO、earlycon、AMBA ID 和 shared-reset deassert |
+| image/Makefile | 生成 gzip 内核 + DT 的 FIT，内嵌 initramfs；load/entry `0x80000000`，配置 `conf@133`；无 factory/sysupgrade 产物 |
+| image/check-image.py | 生成镜像时检查 Image header、内存占用与 FIT 文件尺寸，防止沿用旧内核地址或超出约定 RAM 布局 |
+| image/test_check_image.py | 使用合成文件验证头部、BSS 占用、旧偏移、截断和尺寸上限；不涉及编译 |
+| base-files/lib/upgrade/platform.sh | 分别拒绝镜像检查和实际写入，防止 `sysupgrade -F` 绕过前者 |
+| docs/build.config、README.md | 异机构建配置、临时 U-Boot 启动方法、验收和日志采集步骤 |
+
+保留了来源文件的 SPDX 标识；UART 补丁记录原作者 cnjn。时钟驱动保留社区其他时钟域的
+实现以便后续复用，但本机 DTS 只实例化 TOPCRM 与 LSP0，没有 LSP1 或网络外设消费者。
+此举并不代表所有时钟域已在本机验证。来源文件与本地文件的哈希见
+[SOURCES.sha256](SOURCES.sha256)。
+
+### 研究中发现并处理的问题
+
+1. **内核版本不同。** 发行版是 6.12.103，社区系列基于 6.18。
+   不直接叠加完整系列，提取最低所需部分。对照 6.12.103 头文件确认用到的
+   `devm_clk_hw_register_*` 和 `devm_reset_control_get_shared_deasserted()` 接口存在。
+   这只验证接口声明，不能替代编译。
+2. **加载地址不能照搬。** 原厂 4.19 Image 的 `text_offset=0x80000`，
+   6.12.103 `arch/arm64/kernel/head.S` 的 header 明确为 0。
+   新 FIT 改用 2 MiB 对齐的 `0x80000000`，并在镜像流水线中检查 header。
+   内存占用用 header 的 image_size（含 BSS）核对，不只看 gzip 大小。
+3. **不能跳过 initramfs 初始化。** 检查发行版 `target/linux/generic/other-files/init`
+   后，入口采用 `/init`，由它设置 INITRAMFS、切换 tmpfs 根并执行 procd。
+   不直接将 `/bin/sh` 或 `/etc/preinit` 设为正常启动入口。
+4. **部分旧配置符号失效。** 对照 6.12.103 Kconfig 定义清理
+   ARCH_PHYS_ADDR_T_64BIT、CLKSRC_OF、DMA_REMAP，避免沿用旧模板中的无效符号。
+5. **原厂 U-Boot 会修正 DT、自动保存环境。** 磁盘 DT 不等于实际传入 Linux 的 DT；
+   `zxboot` 路径会写 env。测试流程要求尽早中断自动启动，直接 RAM `bootm`，不修改持久环境。
+6. **旧模块不能作为现代驱动。** 参考 release 混有 4.19 与 6.6 模块，
+   无法加载到本版 6.12。没有将这些文件作为 kmod 或 firmware 包导入。
+
+### 仍需实机或异机验证的问题
+
+| 优先级 | 问题 | 下一步及验收 |
+|---|---|---|
+| P0 | 本版从未实际编译 | 在另一台机器完整构建，保存 feed ID、配置和日志；确认 FIT 元数据及体积 |
+| P0 | 原厂 U-Boot 接受新 FIT 与 DT 的情况未知 | 验证 `bootm ...#conf@133`、gzip 解压、ft_board_setup、传给内核的 bootargs 和内存预留 |
+| P0 | PON/WOE DMA 停机与内存交接不明确 | 检查 U-Boot 停机路径与实际 /proc/iomem；保留内存不等于 DMA 已安全停机，不凭猜测写寄存器 |
+| P0 | 四 watchdog 的 handoff 未知 | 原厂 Linux 会显式启动四个实例，但不能据此断言 U-Boot 已启用；记录复位时间和原因，核对 0x14f09000–0x14f0c000 的状态与 reset 路径 |
+| P0 | UART 时钟和 console 切换 | 确认 earlycon 到 ttyAMA0 持续输出和可输入；检查 25 MHz UART parent、reset、IRQ 31 |
+| P1 | 双核 PSCI | 先 CPU0 空闲稳定，再移除临时 maxcpus=1，验证第二核和 timer 中断 |
+| P1 | 四网口 MAC/MDIO/PHY/微码 | 先最小 MDIO 读取和单口收发；核对队列/IRQ/DMA/MAC/PHY ID，再扩至四口；不套用 SR1010 switch 拓扑 |
+| P1 | 长时间稳定性 | 串口交互、timer、空闲运行、内存压力及重复重启；当前没有温控、cpufreq 或硬件 watchdog 接管 |
+| P2 | NAND 持久安装 | 单独验证 SPI-NAND ECC/OOB、坏块、分区和恢复；保留原 boot/身份区；当前不生成升级镜像 |
+| 延后 | 光口、USB、LED/按键 | 四网口路由功能稳定后逐项适配；光口最后研究 |
+
+动态 PON 预留只保留原厂大小/对齐；Linux 重新选择的地址可能不同于固件 DMA 所用地址。
+WOE 的固定 32 MiB 预留也不涵盖所有潜在 DMA 区域。
+关闭 Linux watchdog 驱动不会关闭可能由固件启动的 watchdog；如果 RAM 启动后定时复位，
+下一轮应基于证据实现接管，而非把错误归为随机内核崩溃。
+
+### 本次检查与范围
+
+- 从 kernel.org 下载 6.12.103 发布源码，SHA256 与发行版 kernel-6.12 文件匹配。
+- 在独立临时源码目录中按发行版顺序应用 278 个 backport、142 个 pending、
+  58 个 hack 补丁，再应用本 target 的 2 个补丁；全部 `patch --fuzz=0` 成功。
+  没有通过 make 准备源码，也没有执行 C 编译器。
+- 对新增配置符号、DT 宏引用、驱动 API 声明、FIT 生成脚本和启动入口进行静态核对。
+- Python 镜像边界测试 7 项通过（含多组异常输入）；shell 语法检查通过，
+  普通镜像检查与强制升级写入路径均返回 1；FIT ITS 文本的配置引用与加载地址正确。
+  新增 101 个内核配置项名称均存在且无重复，DT 头文件与 ZX279133 宏引用可解析。
+  对时钟 C 文件和 UART 补丁运行 checkpatch，修正补丁说明换行后无错误或警告；
+  Git 空白检查通过。
+- **未执行 make/defconfig、内核编译、dtc、dtbs_check、镜像生成或实机启动。**
+  FIT ITS 文本可用占位输入检查生成规则，不能据此声称有可用固件文件。
+
+### 后续每轮追加格式
+
+```text
+日期 / Git commit：
+构建机系统、工具链、feed commits：
+输入配置 / 固件 SHA256：
+板卡硬件差异 / 原厂 U-Boot 版本：
+本轮改动及依据：
+测试步骤与完整日志位置：
+观察到的问题 / 已排除原因：
+下一轮改动及验收标准：
+```

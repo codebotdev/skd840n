@@ -1,0 +1,12 @@
+# SHA256 of imported source inputs and target outputs. Paths after upstream: are relative
+# to cnjn/linux-mainline-zte-zxslc-sr1010 commit 07f8687248578d4be6931c665ff5d08bb6cc3d9d.
+# local: paths are relative to target/linux/zx279133.
+59937e8473e800d95393ca70acb9cd24ec886fc62a354cd11bf1ae59ec38c783  upstream:drivers/clk/clk-zx279133.c
+fdb86cc58692deed3126a3ced62d28f757da57115bcfa94a4be7d360f5f9a493  upstream:include/dt-bindings/clock/zte,zx279133-topcrm.h
+be53a356aa80a50ade337cb9c7ef58d38172bef9d168e0f6ab66c824e5e76903  upstream:include/dt-bindings/clock/zte,zx279133-lsp.h
+8531c8606a7d4f12743d35aea504ccbd9a20b4e7301ddab45cd7b97033b4b067  upstream:include/dt-bindings/reset/zte,zx279133-lsp.h
+8eba3a34e82c5bfd05e5c5bb5ab5b59a26d2cb0c2dcd132b845b39707a3806c4  upstream:upstream-series/0001-arm64-add-initial-ZTE-ZX279133-SR1010-platform-suppo.patch
+27138b7c801f94626935289497d651cc9dafdadb010e225eb81d0b59db1fc5ff  local:files-6.12/drivers/clk/clk-zx279133.c
+be53a356aa80a50ade337cb9c7ef58d38172bef9d168e0f6ab66c824e5e76903  local:files-6.12/include/dt-bindings/clock/zte,zx279133-lsp.h
+fdb86cc58692deed3126a3ced62d28f757da57115bcfa94a4be7d360f5f9a493  local:files-6.12/include/dt-bindings/clock/zte,zx279133-topcrm.h
+8531c8606a7d4f12743d35aea504ccbd9a20b4e7301ddab45cd7b97033b4b067  local:files-6.12/include/dt-bindings/reset/zte,zx279133-lsp.h

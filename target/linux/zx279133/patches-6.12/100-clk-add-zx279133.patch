@@ -1,0 +1,33 @@
+Subject: [PATCH] clk: register the ZX279133 clock and reset driver
+
+The driver and its DT headers are supplied in files-6.12.
+
+---
+--- a/drivers/clk/Kconfig
++++ b/drivers/clk/Kconfig
+@@ -473,6 +473,17 @@
+ 	  It implements SP7021 PLLs/gate.
+ 	  Not all features of the PLL are currently supported
+ 	  by the driver.
++
++config COMMON_CLK_ZX279133
++	bool "Clock driver for the ZTE ZX279133 SoC"
++	depends on ARM64 || COMPILE_TEST
++	select RESET_CONTROLLER
++	help
++	  Support the TOPCRM and LSP clock/reset controllers on ZX279133.
++	  This provides the bus and peripheral clocks, including the UART
++	  clock mux and gates needed for the SK-D840N serial console.
++	  The LSP controllers also provide shared peripheral reset lines.
++	  Say Y when building a kernel for a ZX279133 based board.
+ 
+ source "drivers/clk/actions/Kconfig"
+ source "drivers/clk/analogbits/Kconfig"
+--- a/drivers/clk/Makefile
++++ b/drivers/clk/Makefile
+@@ -148,3 +148,5 @@
+ obj-y					+= xilinx/
+ obj-$(CONFIG_ARCH_ZYNQ)			+= zynq/
+ obj-$(CONFIG_COMMON_CLK_ZYNQMP)         += zynqmp/
++
++obj-$(CONFIG_COMMON_CLK_ZX279133)	+= clk-zx279133.o
