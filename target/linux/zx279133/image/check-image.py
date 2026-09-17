@@ -19,9 +19,10 @@ def check_image(path):
         raise ValueError("text_offset must be zero for FIT load/entry 0x80000000")
     if flags & 1:
         raise ValueError("big-endian kernels are unsupported")
-    # Include BSS and the embedded initramfs in the RAM footprint check.
-    if not 64 <= size <= image_size <= 0x04000000:
-        raise ValueError("Image size/footprint invalid or greater than 64 MiB")
+    # Include BSS and the embedded initramfs. Keep the footprint below the
+    # stock U-Boot multi_dtb_fit at 0x82b00000, observed in live bdinfo.
+    if not 64 <= size <= image_size <= 0x02000000:
+        raise ValueError("Image size/footprint invalid or greater than 32 MiB")
 
 
 def check_fit(path):

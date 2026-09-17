@@ -61,7 +61,7 @@ sha256sum FIT_FILE
 配置为 `conf@133`，引用内核 `kernel@1` 和设备树 `fdt@133`。
 rootfs 已内嵌在内核里，FIT 不需要单独的 ramdisk 节点。
 镜像生成时会检查 ARM64 header 的 `text_offset=0`，内核内存占用不超过
-64 MiB，完整 FIT 不超过 32 MiB；这不是对所有 U-Boot 限制的验证。
+32 MiB，完整 FIT 不超过 32 MiB；这不是对所有 U-Boot 限制的验证。
 
 ## 原厂 U-Boot RAM 启动
 
@@ -86,18 +86,26 @@ help loady
 
 | 用途 | 本版布局 |
 |---|---|
-| 解压后的 Image（含 BSS 占用） | `0x80000000`，上限 64 MiB |
+| 解压后的 Image（含 BSS 占用） | `[0x80000000, 0x82000000)`，上限 32 MiB |
+| 原厂 multi_dtb_fit 指针 | `0x82b00000`，对象大小和后续使用情况待核，暂避开 |
 | 完整 FIT 传输地址 | `0x88000000`，文件上限 32 MiB |
 | 本次 bootm 可用区间 | `[0x80000000, 0x90000000)`，供启动分配器使用 |
 | 保留原厂 WOE 内存 | `[0x91000000, 0x93000000)` |
 | 原厂动态 PON 预留 | 保留大小 `0x03245000`，运行时位置待核 |
 
+用户首次现场回报确认原厂 U-Boot 的高地址 LMB 保留区为
+`[0x9f6ee080, 0xa0000000)`，当前控制 FDT 为 `0x9f6efd40`。
+原提交 f82a9c945b 允许内核占用 64 MiB，可能覆盖新发现的 `multi_dtb_fit`；
+现已收紧至 32 MiB。请在编译机同步后续修正提交。该限制只避免这一已知地址的
+直接覆盖，不证明固件 DMA 已停机，也不证明其余 RAM 均可任意使用。
+
 可先使用 U-Boot 的 TFTP；它使用 U-Boot 自身网卡驱动，与新内核是否支持网口无关。
-下面 IP 只是直连编译机的示例，按实际网络替换，文件名也需替换：
+本机回报的 ipaddr/serverip 已是下面地址。将 TFTP 服务器所在电脑配置为
+`192.168.1.101/24`（不要与现有设备冲突），文件名按实际产物替换：
 
 ```text
-setenv ipaddr 192.168.10.2
-setenv serverip 192.168.10.1
+setenv ipaddr 192.168.1.1
+setenv serverip 192.168.1.101
 tftpboot 0x88000000 sk-d840n-initramfs-fit.itb
 ```
 

@@ -124,6 +124,50 @@ WOE 的固定 32 MiB 预留也不涵盖所有潜在 DMA 区域。
 - **未执行 make/defconfig、内核编译、dtc、dtbs_check、镜像生成或实机启动。**
   FIT ITS 文本可用占位输入检查生成规则，不能据此声称有可用固件文件。
 
+## 现场回报 1：原厂 U-Boot version / bdinfo / printenv
+
+来源：用户在原厂 U-Boot 提示符下执行三条命令后提供的输出。
+这里只保存硬件交接相关字段，不复制 ethaddr 等本机身份字段。
+
+| 现场字段 | 值与含义 |
+|---|---|
+| version | U-Boot 2021.01-svn308776，Jan 02 2025 09:09:11 +0800，与既有证据一致 |
+| DRAM start / size | `0x80000000` / `0x20000000`，512 MiB |
+| relocaddr / TLB | `0x9ff3c000` / `0x9fff0000` |
+| irq_sp / sp start | `0x9f6efd30` |
+| fdt_blob / new_fdt | `0x9f6efd40`；fdt_size `0xc0a0` |
+| multi_dtb_fit | `0x82b00000`；本次新发现的低地址固件对象指针 |
+| LMB reserved 0 | base `0x91000000`，size `0x02000000`，对应 WOE 保留区 |
+| LMB reserved 1 | base `0x9f6ee080`，size `0x00911f80`，结束于 `0xa0000000` |
+| bootcmd / bootdelay | `zxboot` / 1 秒；仍需尽早中断自动启动 |
+| current eth / ethact | `eth0`；只能证明已选中设备，不能证明 TFTP 或链路成功 |
+| ipaddr / serverip | `192.168.1.1` / `192.168.1.101` |
+| bootargs | 含 console=ttyAMA0,115200n8、rdinit=/sbin/init 及厂商参数；RAM 启动时按 README 临时替换 |
+| bootm_low / bootm_size / fdt_high / initrd_high | 完整环境中未列出；不能据此推断厂商编译时默认值 |
+
+`memory.size=0` 与 `reserved.size=0` 是这一打印格式中的字段；RAM bank 和
+LMB 区间条目明确列出非零大小，不能将这两处 0 理解为“没有内存/预留”。
+`flashsize=0` 也不否定 SPI-NAND 的存在；本次环境仍列出了 spi-nand0 分区映射。
+
+**改动：** 初版的 64 MiB Image 占用上限覆盖 `[0x80000000,0x84000000)`，
+可能直接覆盖 `0x82b00000`。改为 32 MiB，内核占用结束不晚于 `0x82000000`，
+距该指针保留 11 MiB 间隔；FIT 传输地址仍为 `0x88000000`，文件上限仍为 32 MiB。
+这里限制的是包含 BSS 的 header image_size，不是只限制压缩后的文件。
+
+依据 [U-Boot v2021.01 fdtdec.c](https://github.com/u-boot/u-boot/blob/v2021.01/lib/fdtdec.c)，
+`multi_dtb_fit` 用于保存含多个 DTB 的 FIT 指针，`fdtdec_resetup()` 可再次读取它。
+这是上游实现的行为；**尚未证明本机厂商 bootm 路径会再次访问该对象**。
+收紧上限属于基于新证据的保守处理，不代表已复现覆盖故障。
+没有修改 fdtcontroladdr、搬移原厂对象、写 NAND 或更换 U-Boot。
+
+**下一步：** 获取 `help bootm`、`help tftpboot`、`help loady`，确认命令能力；
+可用只读 `md.b 0x82b00000 0x28` 查看候选 FIT/FDT 头，检查 magic 和 totalsize。
+随后核对编译机产物的 FIT 元数据、未压缩 Image header 与实际体积，再进行 RAM boot。
+本轮数据没有证明网络收发、看门狗状态、DMA 停机或现代内核启动成功。
+
+**验证：** 新增 multi_dtb_fit 覆盖回归用例；8 项 Python 测试通过，Git 空白检查通过。
+未执行本地编译或设备写入。
+
 ### 后续每轮追加格式
 
 ```text

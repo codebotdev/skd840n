@@ -21,7 +21,7 @@ class ImageBoundsTest(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.path = Path(self.temp.name) / "image"
 
-    def image(self, offset=0, footprint=0x04000000, flags=0, size=64):
+    def image(self, offset=0, footprint=0x02000000, flags=0, size=64):
         header = bytearray(64)
         struct.pack_into("<QQQ", header, 8, offset, footprint, flags)
         header[56:60] = b"ARM\x64"
@@ -44,7 +44,14 @@ class ImageBoundsTest(unittest.TestCase):
             checker.check_image(self.path)
 
     def test_bss_overflow_rejected_even_with_small_file(self):
-        self.image(footprint=0x04000001)
+        self.image(footprint=0x02000001)
+        with self.assertRaises(ValueError):
+            checker.check_image(self.path)
+
+    def test_stock_multi_dtb_overlap_rejected(self):
+        # This footprint passed the original 64 MiB guard but crosses the
+        # multi_dtb_fit pointer reported by the user's stock bootloader.
+        self.image(footprint=0x02B00001)
         with self.assertRaises(ValueError):
             checker.check_image(self.path)
 
