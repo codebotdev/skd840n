@@ -67,6 +67,38 @@ bin/targets/zx279133/generic/immortalwrt-zx279133-generic-skyworth_sk-d840n-mdio
 在编译机检查生成的 DTB 不包含 `spi@10d0f000`、`flash@0` 或悬空的 `spi0` 别名；
 本轮只做了 DTS 源码约束检查，未运行 dtc。
 
+## MTD_BLOCK_RO 配置问答导致构建中断（2026-09-18）
+
+用户的新日志确认 100/110/120/130 补丁已应用，但 syncconfig 停在
+`MTD_BLOCK_RO [N/m/y/?] (NEW)`，随后才报告 auto.conf.cmd 缺失。
+这是 target 漏给新可见选项明确取值，不是新驱动的 C 编译错误。
+修正是在 target/linux/zx279133/config-6.12 明确添加：
+
+```text
+# CONFIG_MTD_BLOCK_RO is not set
+```
+
+它控制只读块设备接口，不是 NAND 只读保护总开关；不需要选 y 或恢复 MTD_BLOCK。
+本次未改变 MDIO/SFC 驱动、只读保护、设备树或启动参数。
+已有 MDIO 构建工作区按上文同步分支，保留个人 .config 与 feeds，不必再次复制配置种子。
+在编译机 Bash 中执行，任一步失败即停止；只清理内核目录，不清理工具链：
+
+```bash
+(
+    set -e
+    set -o pipefail
+    make target/linux/clean
+    make -j1 V=s target/linux/compile 2>&1 | tee build-skd840n-mdio-kernel-retry.log
+    make -j"$(nproc)" V=s 2>&1 | tee build-skd840n-mdio-retry.log
+)
+```
+
+不要通过自动回答、删除 FAIL_ON_UNCONFIGURED 或伪造 auto.conf.cmd 绕过。
+7 项新增配置文本回归测试已通过；未运行完整 Kconfig、固件编译或实机测试，
+尚不能保证不存在其他缺项。后续失败时保留第一处诊断和完整日志。
+静态回归命令：`python3 -B target/linux/zx279133/tests/test_mtd_config.py`。
+详细依据与验证范围见 RESEARCH.md 最新条目。
+
 ## RAM 启动
 
 尽早中断自动启动，不进入可能保存环境的 zxboot。

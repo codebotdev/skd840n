@@ -447,3 +447,54 @@ shell 语法、改动文件哈希及 Git 空白检查通过；原 README/RESEARC
 下一步由用户在编译机完整构建 -mdio FIT，记录提交和产物 SHA256，保持已验证 RAM
 地址与单核参数启动，分别回传被动/C22/C45 日志。真实 PHY、MAC/SerDes 接线、
 微码 ABI 与 DMA 收发仍未验证，Ethernet 四口数据面和持久安装仍未实现。
+
+## 2026-09-18：MDIO 构建反馈，补齐 MTD_BLOCK_RO 的显式关闭值
+
+基线：`6f46d7ed2367a89496bb6c994fa3e75786e195b4`。
+用户提供 `build-skd840n-mdio-kernel.log`，SHA256：
+`b337087d43532cf321377f84ca811a2f1702dcc9bf0eba9596e40325e4b11e24`。
+只记录诊断与哈希，不提交含用户工作目录的完整原始日志。
+
+### 本次异机日志证明的进度
+
+278 个 generic backport、142 个 pending、58 个 hack 和本 target 的 100/110/120/130
+四个补丁均走到应用完成，随后建立 .prepared 并安装用户态头文件。
+在 Image/modules 阶段的 syncconfig 重新进入 MTD 菜单，首个失败点是：
+
+```text
+Readonly block device access to MTD devices (MTD_BLOCK_RO) [N/m/y/?] (NEW)
+```
+
+随后 syncconfig 退出，auto.conf.cmd 缺失与递归 make Error 2 是连带结果。
+本日志没有新 MDIO/SFC 驱动的目标代码编译、内核链接、FIT 生成或新镜像启动证明。
+
+### 根因及最小修复
+
+generic/config-6.12 设置 MTD=y、MTD_BLOCK=y，没有 MTD_BLOCK_RO 的显式取值。
+[Linux 6.12.103 drivers/mtd/Kconfig](https://github.com/gregkh/linux/blob/v6.12.103/drivers/mtd/Kconfig)
+在 if MTD 内定义 MTD_BLOCK_RO，依赖 MTD_BLOCK!=y && BLOCK。
+target 在上一轮启用 MTD 后仍关闭 MTD_BLOCK，使原本隐藏的替代块设备选项变得可见，
+但漏掉了它的回答。这是 target 配置遗漏，不是工具链或新驱动 C 代码报错。
+
+仅在 config-6.12 增加 `# CONFIG_MTD_BLOCK_RO is not set`。
+不通过启用 MTD_BLOCK、关闭整个 MTD/SPI 或移除 FAIL_ON_UNCONFIGURED 绕过。
+MTD_BLOCK_RO 是只读块设备接口，不是 NAND 只读保护总开关；现有 SFC 命令白名单、
+只读分区与 MDIO-only DTS 不变。不修改公共配置、驱动、设备树、FIT 布局或启动参数。
+
+复查已取得的 generic MTD/SPI 相关配置片段：软件 ECC、UBI、SPI slave/spidev 等
+已有显式取值；本轮没有重新求值完整 Kconfig，也没有用户顶层 .config 的完整输入。
+因此不承诺已经排除所有后续缺项。此前测试仅覆盖若干保护选项，未覆盖此隐藏转可见情形。
+
+### 验证、文档与下一步
+
+新增 tests/test_mtd_config.py 的 7 项标准库测试：显式关闭值、保留诊断核心配置、
+区分缺失与 n、缩小的配置覆盖示例、拒绝启用替代块设备、重复符号及错误格式。
+用原始 config-6.12 运行时，两处检查因 MTD_BLOCK_RO 缺失而失败；添加一行后 7 项通过，
+没有跳过。覆盖示例只模拟赋值优先级并假设 BLOCK=y，不是完整 Kconfig 可见性求值。
+Git 空白检查、已修改配置及新增测试的 SHA256 核对通过；保持旧来源条目不变。
+更新 MDIO-BRINGUP.md 的重试说明和 SOURCES-io.sha256。
+
+未在本地执行 make、defconfig、编译器/能力探测、dtc 或固件启动。
+未重跑未修改的旧 I/O、handoff 与 Image 测试，不能把它们计入本轮通过数。
+编译机保留个人 .config 和 feeds，同步后仅清理 target/linux 并重新编译；
+无需重建工具链、重新初始化 feeds 或替换 U-Boot。编译/实机结果仍待用户回传。

@@ -18,7 +18,7 @@ dfb38f80d3b1a0bbc763a46de68574a4e65281b195f38a1b27d8adcdb5b80739  files-6.12/dri
 ea5281d5c706c3b9df220a6045eeaff89a85159c024c748a83d4e562bc958989  patches-6.12/120-skd840n-readonly-io.patch
 d0177ef0dcb73f1e020f30d41fad35c5f35ed4f84459ea59ffb50fbcb64582d4  dts/zx279133-skyworth-sk-d840n-io.dts
 c5af637ca6526b57273364c91559245fd792c8856aa32b14d744a506955d6fc7  base-files/usr/sbin/skd840n-diag
-6474e390edb8b3081177fa7f704af8b83c4248b8f5ae1d516e12af49a6f7fbeb  config-6.12
+ec0a0dbce6317f3692f8df97c8718bf14643a3d37ace1f51821002236218dd21  config-6.12
 0cb886faa7aa4aead80eec04f870f7ae896a19d8f002c9fdb3fe287a119448f9  image/Makefile
 0bb0d5ae46427304534403f01d2c8338a604f560a3c24fb4a2d193a31ddf51fc  docs/build-io.config
 196ed82afd02c1c49c8ebf770593922c19abbe451f75860e983d7c274bff4434  tests/test_readonly_io.py
@@ -29,3 +29,6 @@ cc1924f2588a53b28c5c279c6d378f74076dfdf9620c3dd20a5aac4777069855  dts/zx279133-s
 5a6b4b9dafb61736b3d7d154db7a2e15399f7198ee98f4220a15e0bbeba0df45  docs/build-mdio.config
 7030d8d799015afb8e829769673292aa935da86d28b10aff58bd38ae954166c8  patches-6.12/130-cacheinfo-complete-arch-fallback.patch
 4f470fce3c4ed0f697a64cf224f6b2ba7735a83d46e66ed0ebdd1d9bb0bc9047  tests/test_handoff.py
+# MTD_BLOCK_RO visibility/explicit-answer regression (no Kconfig execution).
+# gregkh/linux v6.12.103 drivers/mtd/Kconfig blob: 796a2eccbef0b873585adc28208a505cfd3933b5
+d3b5f2250849147a9fdde46a2263c1f5d8e5150c82afb9672a98c32dfe15420e  tests/test_mtd_config.py
