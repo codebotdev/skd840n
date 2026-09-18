@@ -3,7 +3,7 @@
 本 target 基于 ImmortalWrt **v25.12.2 / Linux 6.12.103**，目标是让
 SK-D840N 使用原厂 U-Boot 启动现代内核，进入串口上的 ImmortalWrt 用户空间。
 这是四网口有线路由器适配的第一步，**目前不支持以太网、光口和持久安装**。
-本版尚未编译、尚未上机；提交中的检查结果不能替代异机编译和实机验证。
+已开始异机构建，尚无完整编译成功或实机启动记录；本地检查不能替代这些验证。
 
 实现和问题见 [研究记录](docs/RESEARCH.md)，配置种子见
 [build.config](docs/build.config)。没有导入原厂二进制内核、模块、微码或本机身份数据。
@@ -63,6 +63,17 @@ make -j20
 
 修改后的 target 配置会参与重新合并。若仍失败，保留完整日志，尤其是首次错误及
 末尾约 100 行；配置问题解决并不代表后续驱动编译已通过。
+
+### 时钟驱动报 devm_clk_hw_register_gate_parent_hw 未声明
+
+该接口来自较新内核，Linux 6.12.103 未提供。后续修正通过 target 内部辅助函数，
+使用 6.12 已有的 `devm_clk_hw_register_gate_parent_data()` 保留父时钟和资源管理语义。
+不要关闭 `-Werror` 或给调用结果加指针强转；后面的 int→pointer 报错是同一缺失接口的连带错误。
+
+在编译机同步修正后，用上面的单线程命令重试 `target/linux/compile`，成功后继续完整构建。
+一般不需要清理工具链。若仍出现原接口名，先确认当前 Git 提交和源码中该调用已更新；
+如 build_dir 仍保留旧源文件，再执行 `make target/linux/clean` 并重新构建内核。
+这只清理内核构建目录，无需运行整个仓库的 `make clean`。
 
 预期主产物在 `bin/targets/zx279133/generic/`，文件名以
 `skyworth_sk-d840n-initramfs-fit.itb` 结尾（前缀由发行版配置决定）。

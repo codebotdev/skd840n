@@ -244,6 +244,40 @@ Linux 6.12.103 Kconfig 源码进行解释式依赖分析。临时使用
 multi-DTB 对象连同数据的总占用，继续保留上一轮的 32 MiB Image 上限。
 这些输出确认命令和头部信息，没有证明 TFTP/YMODEM 传输或新内核启动已成功。
 
+## 2026-09-18：首次时钟驱动编译错误，修复 6.12 API 回移
+
+用户新日志已进入 `CC drivers/clk/clk-zx279133.o`，本次没有再停在配置问答。
+首个错误是 `devm_clk_hw_register_gate_parent_hw()` 隐式声明，随后七处调用均出现
+int→pointer 错误。这里不能用强转或关闭警告处理；根因是初次从较新社区内核回移时
+遗漏了一个 Linux 6.12.103 不提供的 API。此前的接口核对不完整，本轮纠正。
+
+### 修改与语义核对
+
+- 在 `files-6.12/drivers/clk/clk-zx279133.c` 增加局部辅助函数
+  `zx279133_register_gate()`，用 `struct clk_parent_data.hw` 表达原来的父时钟，
+  调用 6.12 已有的 `devm_clk_hw_register_gate_parent_data()`。
+- 将缺失接口的七处调用全部替换为该辅助函数。父时钟、名字、flags、寄存器地址、
+  bit index、gate flags、自旋锁参数均保持原值；没有改动时钟频率、门控策略或 DTS。
+- 保留 devm 生命周期。对照 6.12.103 的 `drivers/clk/clk-gate.c`，确认该接口仍走
+  `__devm_clk_hw_register_gate()`，注册失败和设备资源释放时均有对应清理。
+- 对照 `drivers/clk/clk.c` 的 `clk_core_populate_parent_map()`，确认注册期间复制
+  parent_data 的字段；局部 parent_data 的栈生命周期不会留给时钟核心悬空指针。
+  index 显式设为 -1，与原 parent_hws 路径默认值一致；父时钟仍直接通过 hw 指针引用。
+- 更新 `docs/SOURCES.sha256` 的本地适配文件哈希，保留社区原始输入哈希。
+  README 增加此错误的处理方法，并将状态更新为“已开始异机构建，尚未完整通过”。
+
+### 本轮验证
+
+- 对七处调用逐一比较完整参数列表，仅更换调用函数，参数一致。
+- 将驱动中用到的七种时钟 API 名称及每处调用的参数数量，与 6.12.103 的
+  `include/linux/clk-provider.h` 声明/宏核对，全部匹配。该检查不等价于完整 C 类型检查。
+- 时钟 C 文件通过 Linux checkpatch；来源哈希核对及 Git 空白检查通过。
+- 未运行 make、C 编译器、预处理器或固件测试。尚须用户在编译机验证修复后的目标文件、
+  完整内核和 FIT 镜像构建；此次反馈仅证明构建已走到时钟驱动这一阶段。
+
+下一步：编译机同步提交，先 `make -j1 V=s target/linux/compile`，成功后 `make -j20`。
+如仍有错误，继续收集第一处实际诊断，避免只保留末尾的递归 make Error 2。
+
 ### 后续每轮追加格式
 
 ```text

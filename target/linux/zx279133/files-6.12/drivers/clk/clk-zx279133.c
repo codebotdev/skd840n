@@ -319,6 +319,22 @@ zx279133_register_factor(struct device *dev,
 }
 
 static struct clk_hw *
+zx279133_register_gate(struct device *dev, const char *name,
+		       const struct clk_hw *parent_hw, unsigned long flags,
+		       void __iomem *reg, u8 bit_idx, u8 gate_flags,
+		       spinlock_t *lock)
+{
+	const struct clk_parent_data parent_data = {
+		.hw = parent_hw,
+		.index = -1,
+	};
+
+	/* Linux 6.12 lacks the devm parent_hw gate wrapper. */
+	return devm_clk_hw_register_gate_parent_data(dev, name, &parent_data,
+			flags, reg, bit_idx, gate_flags, lock);
+}
+
+static struct clk_hw *
 zx279133_register_mux(struct device *dev, const char *name,
 		      const struct clk_parent_data *parents,
 		      unsigned int num_parents, void __iomem *reg,
@@ -476,42 +492,38 @@ static int zx279133_topcrm_clk_probe(struct platform_device *pdev)
 	priv->parents[ZX279133_PARENT_PON_NPPT_WCLK_MUX] = hw;
 	priv->data.hws[ZX279133_TOPCRM_CLK_PON_NPPT_WCLK_MUX] = hw;
 
-	hw = devm_clk_hw_register_gate_parent_hw(dev, "uni_serdes_pclk",
-						 priv->parents[ZX279133_PARENT_SYS_PCLK],
-						 0,
-						 base + ZX279133_TOPCRM_UNI_SERDES_GATE_CTRL,
-						 8, 0, &priv->lock);
+	hw = zx279133_register_gate(dev, "uni_serdes_pclk",
+				   priv->parents[ZX279133_PARENT_SYS_PCLK], 0,
+				   base + ZX279133_TOPCRM_UNI_SERDES_GATE_CTRL,
+				   8, 0, &priv->lock);
 	if (IS_ERR(hw))
 		return dev_err_probe(dev, PTR_ERR(hw),
 				     "failed to register uni_serdes_pclk gate\n");
 	priv->data.hws[ZX279133_TOPCRM_CLK_UNI_SERDES_PCLK] = hw;
 
-	hw = devm_clk_hw_register_gate_parent_hw(dev, "uni_serdes_50m",
-						 priv->parents[ZX279133_PARENT_CLK50M],
-						 0,
-						 base + ZX279133_TOPCRM_UNI_SERDES_GATE_CTRL,
-						 9, 0, &priv->lock);
+	hw = zx279133_register_gate(dev, "uni_serdes_50m",
+				   priv->parents[ZX279133_PARENT_CLK50M], 0,
+				   base + ZX279133_TOPCRM_UNI_SERDES_GATE_CTRL,
+				   9, 0, &priv->lock);
 	if (IS_ERR(hw))
 		return dev_err_probe(dev, PTR_ERR(hw),
 				     "failed to register uni_serdes_50m gate\n");
 	priv->data.hws[ZX279133_TOPCRM_CLK_UNI_SERDES_50M] = hw;
 
-	hw = devm_clk_hw_register_gate_parent_hw(dev, "pon_serdes_pclk",
-						 priv->parents[ZX279133_PARENT_SYS_PCLK],
-						 0,
-						 base + ZX279133_TOPCRM_UNI_SERDES_GATE_CTRL,
-						 0, 0, &priv->lock);
+	hw = zx279133_register_gate(dev, "pon_serdes_pclk",
+				   priv->parents[ZX279133_PARENT_SYS_PCLK], 0,
+				   base + ZX279133_TOPCRM_UNI_SERDES_GATE_CTRL,
+				   0, 0, &priv->lock);
 	if (IS_ERR(hw))
 		return dev_err_probe(dev, PTR_ERR(hw),
 				     "failed to register pon_serdes_pclk gate\n");
 	priv->data.hws[ZX279133_TOPCRM_CLK_PON_SERDES_PCLK] = hw;
 
 	/* NPPT uses the vendor-named PON WOE1 working-clock path. */
-	hw = devm_clk_hw_register_gate_parent_hw(dev, "pon_woe1_wclk",
-						 priv->parents[ZX279133_PARENT_PON_NPPT_WCLK_MUX],
-						 0,
-						 base + ZX279133_TOPCRM_PON_GATE_CTRL,
-						 10, 0, &priv->lock);
+	hw = zx279133_register_gate(dev, "pon_woe1_wclk",
+				   priv->parents[ZX279133_PARENT_PON_NPPT_WCLK_MUX],
+				   0, base + ZX279133_TOPCRM_PON_GATE_CTRL,
+				   10, 0, &priv->lock);
 	if (IS_ERR(hw))
 		return dev_err_probe(dev, PTR_ERR(hw),
 				     "failed to register pon_woe1_wclk gate\n");
@@ -526,17 +538,15 @@ static int zx279133_topcrm_clk_probe(struct platform_device *pdev)
 
 		reg = base + desc->reg_offset;
 		if (index == ZX279133_TOPCRM_CLK_TEMPSENSOR_WCLK) {
-			hw = devm_clk_hw_register_gate_parent_hw(dev, desc->name,
-								 pvt_div, desc->flags,
-								 reg, desc->bit_idx, 0,
-								 &priv->lock);
+			hw = zx279133_register_gate(dev, desc->name, pvt_div,
+						   desc->flags, reg, desc->bit_idx,
+						   0, &priv->lock);
 		} else {
 			struct clk_hw *parent = priv->parents[desc->parent];
 
-			hw = devm_clk_hw_register_gate_parent_hw(dev, desc->name,
-								 parent, desc->flags,
-								 reg, desc->bit_idx, 0,
-								 &priv->lock);
+			hw = zx279133_register_gate(dev, desc->name, parent,
+						   desc->flags, reg, desc->bit_idx,
+						   0, &priv->lock);
 		}
 		if (IS_ERR(hw))
 			return dev_err_probe(dev, PTR_ERR(hw),
@@ -546,11 +556,11 @@ static int zx279133_topcrm_clk_probe(struct platform_device *pdev)
 		priv->data.hws[index] = hw;
 	}
 
-	hw = devm_clk_hw_register_gate_parent_hw(dev, "lsp1_100m",
-						 priv->parents[ZX279133_PARENT_CLK100M],
-						 ZX279133_TOPCRM_GATE_FLAGS,
-						 base + ZX279133_TOPCRM_GATE_CTRL,
-						 20, 0, &priv->lock);
+	hw = zx279133_register_gate(dev, "lsp1_100m",
+				   priv->parents[ZX279133_PARENT_CLK100M],
+				   ZX279133_TOPCRM_GATE_FLAGS,
+				   base + ZX279133_TOPCRM_GATE_CTRL,
+				   20, 0, &priv->lock);
 	if (IS_ERR(hw))
 		return dev_err_probe(dev, PTR_ERR(hw),
 				     "failed to register lsp1_100m gate\n");

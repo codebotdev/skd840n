@@ -6,7 +6,7 @@ fdb86cc58692deed3126a3ced62d28f757da57115bcfa94a4be7d360f5f9a493  upstream:inclu
 be53a356aa80a50ade337cb9c7ef58d38172bef9d168e0f6ab66c824e5e76903  upstream:include/dt-bindings/clock/zte,zx279133-lsp.h
 8531c8606a7d4f12743d35aea504ccbd9a20b4e7301ddab45cd7b97033b4b067  upstream:include/dt-bindings/reset/zte,zx279133-lsp.h
 8eba3a34e82c5bfd05e5c5bb5ab5b59a26d2cb0c2dcd132b845b39707a3806c4  upstream:upstream-series/0001-arm64-add-initial-ZTE-ZX279133-SR1010-platform-suppo.patch
-27138b7c801f94626935289497d651cc9dafdadb010e225eb81d0b59db1fc5ff  local:files-6.12/drivers/clk/clk-zx279133.c
+2882099009a82565dbcf4445536969c8258acd395cc5f94f2ff002c28c1d6495  local:files-6.12/drivers/clk/clk-zx279133.c
 be53a356aa80a50ade337cb9c7ef58d38172bef9d168e0f6ab66c824e5e76903  local:files-6.12/include/dt-bindings/clock/zte,zx279133-lsp.h
 fdb86cc58692deed3126a3ced62d28f757da57115bcfa94a4be7d360f5f9a493  local:files-6.12/include/dt-bindings/clock/zte,zx279133-topcrm.h
 8531c8606a7d4f12743d35aea504ccbd9a20b4e7301ddab45cd7b97033b4b067  local:files-6.12/include/dt-bindings/reset/zte,zx279133-lsp.h
