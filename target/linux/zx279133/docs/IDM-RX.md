@@ -1,5 +1,18 @@
 # SK-D840N IDM receive transport
 
+## 2026-09-18 external build result
+
+The user's `build-skd840n-idm-rx-kernel.log` compiles
+`drivers/net/ethernet/zte/skd840n-idm-rx.o`, completes the final vmlinux link,
+creates `arch/arm64/boot/Image`, and returns through the top-level make.
+No C compilation or link error is reported. The only warning is an initial
+targetinfo timestamp 0.18 seconds in the future; it did not abort this run.
+This is external build evidence, not DMA, netdev or LAN4 traffic validation.
+The log has no exact Git revision, final config, image hashes or shell exit
+status. The reviewed development baseline is `52bb80fddddd240546b8b08da19bac314d385f92`.
+See the latest [research entry](RESEARCH.md) for the log hash and limitations.
+No rebuild, image boot or repeated PHY capture is needed for this documentation update.
+
 ## Status: kernel-build-integrated component, not a working Ethernet interface
 
 This continues `2f43012679237023bb0092940864a3e403c46fa4` on the Ethernet

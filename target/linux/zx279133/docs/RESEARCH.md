@@ -209,3 +209,34 @@ BP 字节序、128 字节偏移、停机失败仍释放、遗漏 more、busy 时
 没有重放完整发行版补丁链。原文件 blob、变更文件 SHA256 和 Git 空白检查通过。
 本轮未运行 make、defconfig、C 预处理器/编译器、dtc 或新固件；其他历史测试未重跑。
 可选的异机动作仅是 target/linux/compile 验证新 .o 的 API；没有新的设备测试命令。
+
+## 2026-09-18：RX 组件异机编译及内核链接通过
+
+本轮开发分支基线 `52bb80fddddd240546b8b08da19bac314d385f92`。
+用户回传 `build-skd840n-idm-rx-kernel.log`，228600 字节，SHA256：
+`ba7c6067a36853132aa5f3c92bd035597e37d8e17de2367d6972fbd85bd00cf3`。
+原始日志未提交；本节只记录构建阶段证据，不复制用户工作目录。
+
+日志显示补丁 150 应用完成，随后编译
+`drivers/net/ethernet/zte/skd840n-idm-rx.o`，并将该目录归档为 built-in.a。
+构建继续完成 MODPOST、最终 `LD vmlinux`、System.map 和
+`OBJCOPY arch/arm64/boot/Image`，建立 .modules，逐层返回顶层 make。
+没有 C 编译、未定义符号或递归 make 失败诊断。
+因此此前待验证的 RX 组件异机编译和本次 target/linux/compile 已取得通过证据。
+附件没有 git rev-parse、最终 .config、Image/FIT 哈希或 shell 的数值退出码；
+不据此声称所有函数均保留在最终镜像，或已复核全部构建输入。
+
+开头仅有一个临时 targetinfo 文件比当时时钟超前 0.18 秒的警告，以及
+Clock skew detected 提示。后续上述编译和链接阶段完成，没有因该提示退出。
+日志不说明时钟偏差来源，也不能证明时钟问题永久消失；不归咎于 RX 驱动。
+若后续反复出现，需单独检查构建机时钟与文件时间戳，而非修改驱动或关闭警告。
+
+最后的 image compile 显示 Nothing to be done；本次附件没有 FIT 打包、新镜像
+启动或 DMA 收发证据。RX 组件仍没有父驱动调用入口，不能因此安排 LAN4 ping。
+本轮只更新研究记录、IDM-RX 的状态说明和对应校验值，不修改任何运行代码、
+Kconfig、DTS、FIT、NAND 保护或已确认的端口映射。无需为此文档提交清理或重编。
+
+本地仅核对输入日志哈希、基线文档 Git blob、文档变更及对应 SHA256；
+未重跑历史单元测试，也未执行 make、编译器、dtc 或实机测试。
+下一实现项仍是正常 TX 元数据与回收、NP/PPU/SMAC 初始化、真实停机及
+NAPI/IRQ/netdev 父驱动。现有证据足够继续代码开发，不重复索要同一 PHY 表。
