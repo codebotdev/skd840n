@@ -324,3 +324,67 @@ Init 清空 DEVICE_DTS，板级 profile 稍后才将其设为 `zx279133-skyworth
 观察到的问题 / 已排除原因：
 下一轮改动及验收标准：
 ```
+
+## 2026-09-18：基础 FIT 实机启动确认；隔离的只读 I/O 适配
+
+开发基线：`5c6b70eba8ce5e464cdb633bde809084b7060934`。本轮用户提供完整串口日志和
+256 MiB 主数据备份，要求继续适配、不需要光口。历史记录保留；本节更新最新状态。
+
+### 日志结论
+
+此前基础 FIT 已通过原厂 U-Boot 的 conf@133 校验、解压与 FDT 搬移，Linux 6.12.103
+进入 ImmortalWrt 25.12.2 的串口 shell。日志显示 512 MiB RAM、PSCI、GICv3、
+25 MHz timer，以及 earlycon 到 ttyAMA0 的正常切换。本轮附件从 bootm 开始，
+不包含完整 TFTP 传输、构建过程或该 FIT 的 SHA256。
+
+只有 CPU0 在线与 maxcpus=1 相符，不足以断言双核故障。
+旧版没有 /proc/mtd、只有 lo，与关闭 MTD/SPI、缺少 Ethernet 数据面相符。
+ip -br 不被该 BusyBox 支持，改用 ip link show；debugfs 已挂载，避免重复 mount。
+/soc/bdinfo:vid_list 修正失败和 cacheinfo 警告未阻止此次启动；本轮没有伪造
+板型字段、缓存参数来消除提示，也没有声称已经修复这两处警告。
+固件 DMA 停机、watchdog handoff、SMP 和长期稳定性仍待实机确认。
+
+### 实现及依据
+
+新增 skyworth_sk-d840n-io profile、专用 DTS 和 build-io.config。保留基础 DTS、
+原 FIT 布局、32 MiB 上限和升级写入拦截。两种 profile 共用新内核配置，
+重新构建的基础镜像也不是此前已测试过的二进制，应保留旧 .itb 对照。
+
+新增 MDIO 驱动只通过显式 sysfs 读取两条总线上原厂候选地址的 C22/C45 PHY ID。
+不在 probe 自动枚举、不写 PHY 数据或外部 reset GPIO、不注册 Ethernet netdev。
+新增 SFC 驱动采用单线、最高 25 MHz、PIO；整片分区只读，exec_op 还有不可配置的
+命令白名单，拒绝 WREN、program、erase、OTP 和坏块 LUT 写入。
+仅实际识别 ef aa 22 后允许 W25N02KV 的受限读取和必要易失特征配置。
+SPI-NAND 探测仍需选择写缓存模板，因此 supports_op 描述传输能力，
+写保护放在实际执行入口，避免只读芯片也探测失败。
+RESET 保留已确认的不可变芯片身份，兼容 resume 不重读 ID 的配置流程。
+
+两驱动均依赖原厂遗留 pinmux；MDIO 还依赖分频配置，不是完整冷启动初始化。
+未导入 SR1010 交换机/PHY 拓扑、微码或旧模块。Ethernet MAC/NP/FPP/IDM DMA、
+四口映射和 WAN/LAN 配置尚未实现。USB、GPIO/LED/按键、温控和 watchdog 尚未启用。
+光口不在功能目标内，但未证明固件 DMA 停止之前仍保留 PON/WOE 内存预留。
+
+新增 skd840n-diag，默认被动采集，--mdio 才读取候选 ID；不读取闪存内容或配置文件，
+不自动挂载 debugfs、不进行任意 MMIO 扫描。详细构建、RAM 启动及验收步骤见
+[IO-BRINGUP.md](IO-BRINGUP.md)，本机备份证据见 [FLASH-EVIDENCE.md](FLASH-EVIDENCE.md)，
+来源与校验值见 [SOURCES-io.sha256](SOURCES-io.sha256)。
+原始备份、提取的内核/DTB和设备身份数据不提交。
+
+### 本轮验证与限制
+
+9 项 Python 测试通过，包括从实际 C 白名单函数解析出的有限 AST 解释测试：
+遍历不允许的 opcode、65536 个特征地址/值组合、未知芯片和页边界；
+另检查保护先于硬件访问、MDIO 无写操作、profile/配置边界及 shell 参数。
+5 项策略测试依赖 pycparser，缺少时明确 skipped，不得报告全套通过。
+该模型使用范围内 Python 整数，不模拟完整 C 类型/溢出、SPI core、MMIO、中断和硬件。
+
+新增补丁四个 hunk 对照已取得的 Linux 6.12.103 原始文本片段以零 fuzz 应用成功；
+不代表已应用完整 ImmortalWrt 补丁链。shell 语法及 Git 空白检查通过。
+备份大小和 SHA256 复核，原文件未修改。
+本轮未执行 make、defconfig、C 预处理器/编译器、dtc、mkimage、完整配置求值或
+新镜像实机启动，也没有重跑此前的 Image 边界测试。新增代码不是已验证固件。
+
+下一步先在编译机构建 -io 镜像，RAM 启动后采集 PHY ID、MTD 几何/flags/ECC，
+必要时只读第一页作哈希比对。再依据真实 PHY/SerDes/微码 ABI 实现单口 DMA 收发，
+随后扩至四口。原厂/社区微码 CRC 不同不能证明绝对不兼容，也不能直接互换。
+双核测试与新外设测试分开进行，不同时取消 maxcpus=1 和 clk_ignore_unused。

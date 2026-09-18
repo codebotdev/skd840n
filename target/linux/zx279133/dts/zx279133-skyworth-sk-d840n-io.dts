@@ -1,0 +1,83 @@
+// SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
+/* A separate, UNTESTED peripheral profile; retain the baseline RAM image. */
+#include "zx279133-skyworth-sk-d840n.dts"
+
+/ {
+	model = "Skyworth SK-D840N (read-only I/O bring-up)";
+
+	aliases {
+		spi0 = &spifc;
+	};
+};
+
+&{/soc} {
+	lsp1_clk: clock-controller@14f00000 {
+		compatible = "zte,zx279133-lsp1-clk";
+		reg = <0 0x14f00000 0 0x100>;
+		clocks = <&topcrm ZX279133_TOPCRM_CLK_LSP1_PCLK>,
+			 <&topcrm ZX279133_TOPCRM_CLK_LSP1_32K>,
+			 <&topcrm ZX279133_TOPCRM_CLK_LSP1_25M>,
+			 <&topcrm ZX279133_TOPCRM_CLK_LSP1_100M>;
+		clock-names = "pclk", "wclk32k", "wclk25m", "wclk100m";
+		#clock-cells = <1>;
+		#reset-cells = <1>;
+	};
+
+	/* Inherit the bootloader's MDIO pinmux and divider, not SR1010's PHYs. */
+	mdio0_diag: mdio@14f01000 {
+		compatible = "skyworth,sk-d840n-mdio-diag";
+		reg = <0 0x14f01000 0 0x1000>;
+		clocks = <&lsp1_clk ZX279133_LSP1_CLK_MDIO0_PCLK>,
+			 <&lsp1_clk ZX279133_LSP1_CLK_MDIO0_WCLK>;
+		clock-names = "pclk", "wclk";
+		resets = <&lsp1_clk ZX279133_LSP1_RESET_MDIO0>;
+	};
+
+	mdio1_diag: mdio@14f02000 {
+		compatible = "skyworth,sk-d840n-mdio-diag";
+		reg = <0 0x14f02000 0 0x1000>;
+		clocks = <&lsp1_clk ZX279133_LSP1_CLK_MDIO1_PCLK>,
+			 <&lsp1_clk ZX279133_LSP1_CLK_MDIO1_WCLK>;
+		clock-names = "pclk", "wclk";
+		resets = <&lsp1_clk ZX279133_LSP1_RESET_MDIO1>;
+	};
+
+	/*
+	 * The stock DT's 0x40000 span overlaps GPIO. The SFC's registers fit
+	 * in this 4 KiB page. Inherit the stock bootloader's flash pinmux.
+	 */
+	spifc: spi@10d0f000 {
+		compatible = "skyworth,sk-d840n-sfc-ro";
+		reg = <0 0x10d0f000 0 0x1000>;
+		interrupts = <GIC_SPI 33 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&lsp0_clk ZX279133_LSP_CLK_SPIFC_PCLK>,
+			 <&lsp0_clk ZX279133_LSP_CLK_SPIFC_WCLK>;
+		clock-names = "pclk", "wclk";
+		resets = <&lsp0_clk ZX279133_LSP_RESET_SPIFC>;
+		skyworth,lsp0 = <&lsp0_clk>;
+		spi-max-frequency = <25000000>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		flash@0 {
+			compatible = "spi-nand";
+			reg = <0>;
+			spi-max-frequency = <25000000>;
+			spi-rx-bus-width = <1>;
+			spi-tx-bus-width = <1>;
+
+			/* No rootfs/UBI names, writable partitions, or install layout. */
+			partitions {
+				compatible = "fixed-partitions";
+				#address-cells = <1>;
+				#size-cells = <1>;
+
+				partition@0 {
+					label = "stock-readonly";
+					reg = <0 0x10000000>;
+					read-only;
+				};
+			};
+		};
+	};
+};

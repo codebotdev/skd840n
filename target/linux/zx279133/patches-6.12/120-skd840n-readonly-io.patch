@@ -1,0 +1,64 @@
+From: SK-D840N bring-up maintainers
+Subject: [PATCH] add isolated SK-D840N read-only peripheral diagnostics
+
+The implementations live in the target's files-6.12 overlay. Neither
+controller binds the baseline DTS. The SFC has an unconditional command
+allowlist; the MDIO diagnostic does not register PHYs or an Ethernet path.
+
+--- a/drivers/misc/Kconfig
++++ b/drivers/misc/Kconfig
+@@ -5,6 +5,15 @@
+ 
+ menu "Misc devices"
+ 
++config SKD840N_MDIO_DIAG
++	bool "SK-D840N read-only PHY identification"
++	depends on ARM64 && OF && COMMON_CLK && RESET_CONTROLLER && SYSFS
++	help
++	  Opt-in PHY-ID reads on the SK-D840N's two ZX279133 MDIO
++	  controllers. Only addresses found in the stock device tree
++	  are queried, through read-only sysfs files. This does not
++	  implement an Ethernet data path or write PHY registers.
++
+ config SENSORS_LIS3LV02D
+ 	tristate
+ 	depends on INPUT
+--- a/drivers/misc/Makefile
++++ b/drivers/misc/Makefile
+@@ -3,6 +3,7 @@
+ # Makefile for misc devices that really don't fit anywhere else.
+ #
+ 
++obj-$(CONFIG_SKD840N_MDIO_DIAG)	+= skd840n-mdio-diag.o
+ obj-$(CONFIG_IBM_ASM)		+= ibmasm/
+ obj-$(CONFIG_IBMVMC)		+= ibmvmc.o
+ obj-$(CONFIG_AD525X_DPOT)	+= ad525x_dpot.o
+--- a/drivers/spi/Kconfig
++++ b/drivers/spi/Kconfig
+@@ -48,6 +48,16 @@
+ 
+ if SPI_MASTER
+ 
++config SPI_SKD840N_RO
++	bool "SK-D840N array-read-only SPI NAND inspection"
++	depends on ARM64 && OF && COMMON_CLK && RESET_CONTROLLER
++	select MFD_SYSCON
++	select SPI_MEM
++	help
++	  PIO SPI-NAND inspection for the SK-D840N. Erase, program,
++	  write-enable and OTP operations are rejected by the controller.
++	  Only the observed Winbond ef aa 22 feature format is accepted.
++
+ config SPI_MEM
+ 	bool "SPI memory extension"
+ 	help
+--- a/drivers/spi/Makefile
++++ b/drivers/spi/Makefile
+@@ -3,6 +3,7 @@
+ # Makefile for kernel SPI drivers.
+ #
+ 
++obj-$(CONFIG_SPI_SKD840N_RO)		+= spi-skd840n-ro.o
+ ccflags-$(CONFIG_SPI_DEBUG) := -DDEBUG
+ 
+ # small core, mostly translating board-specific

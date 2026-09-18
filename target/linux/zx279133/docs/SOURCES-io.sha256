@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# Run sha256sum -c docs/SOURCES-io.sha256 from target/linux/zx279133.
+# Source provenance below uses Git blob SHA-1, NOT SHA256.
+# cnjn/linux-mainline-zte-zxslc-sr1010
+# commit 07f8687248578d4be6931c665ff5d08bb6cc3d9d
+# drivers/net/mdio/mdio-zx279133.c: 1c81616c621383a354952d9286fd05018faa133f
+# drivers/spi/spi-zx279133-sfc.c: 1217e5626e7d345cde25ab99b26c3a330e040af5
+# arch/arm64/boot/dts/zte/zx279133.dtsi: 54fa58055f89fe8030b76b837b1cec13608de8a6
+# Adapted register protocols; GPL-2.0-only attribution retained in drivers.
+# No SR1010 Ethernet topology, binary modules or firmware imported.
+# Linux API/operation references: gregkh/linux tag v6.12.103
+# drivers/mtd/nand/spi/core.c: 48ac009cbaad289a73f0dfa1b4666f34bb2fd76d
+# drivers/mtd/nand/spi/winbond.c: 46bc06d674c0dd45fb8b46d78d51ce47bf5347a0
+# Stock input hashes and limits: FLASH-EVIDENCE.md; raw data not committed.
+# Local adapted code/config/tests, SHA256:
+2ea9ab50b3f7ba60c6299091de74ffae24e351ae5d2ea4ad7e6452bebbc2d705  files-6.12/drivers/misc/skd840n-mdio-diag.c
+dfb38f80d3b1a0bbc763a46de68574a4e65281b195f38a1b27d8adcdb5b80739  files-6.12/drivers/spi/spi-skd840n-ro.c
+ea5281d5c706c3b9df220a6045eeaff89a85159c024c748a83d4e562bc958989  patches-6.12/120-skd840n-readonly-io.patch
+d0177ef0dcb73f1e020f30d41fad35c5f35ed4f84459ea59ffb50fbcb64582d4  dts/zx279133-skyworth-sk-d840n-io.dts
+b5b44fee1b2918bca5b9798782c65e82d779a0a1734c498c09f92fe2f1df1ac1  base-files/usr/sbin/skd840n-diag
+6474e390edb8b3081177fa7f704af8b83c4248b8f5ae1d516e12af49a6f7fbeb  config-6.12
+bb3a9d0753f1fda2a1dda6e40719124ab95d0a5e7b57672d0d73bf38badf21c4  image/Makefile
+0bb0d5ae46427304534403f01d2c8338a604f560a3c24fb4a2d193a31ddf51fc  docs/build-io.config
+196ed82afd02c1c49c8ebf770593922c19abbe451f75860e983d7c274bff4434  tests/test_readonly_io.py

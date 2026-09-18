@@ -35,4 +35,13 @@ define Device/skyworth_sk-d840n
 endef
 TARGET_DEVICES += skyworth_sk-d840n
 
+# Same RAM/FIT limits, separate DTS: the existing profile stays minimal.
+define Device/skyworth_sk-d840n-io
+  DEVICE_VENDOR := Skyworth
+  DEVICE_MODEL := SK-D840N
+  DEVICE_VARIANT := Read-only I/O bring-up (experimental)
+  DEVICE_DTS := zx279133-skyworth-sk-d840n-io
+endef
+TARGET_DEVICES += skyworth_sk-d840n-io
+
 $(eval $(call BuildImage))
