@@ -15,7 +15,7 @@
 0584b3f83bd42db50fcb73fdf69cbc8f5ac46c7cd2b2d74001baf3e4dbda23f0  base-files/usr/sbin/skd840n-port-map
 9bf8ae6102627a8ba8315eff546ff71e2155a5644752f4bf06615cdd3211c70e  tests/test_phy_link.py
 9f35b9e2ac3f6ccb3d43d148949c69b7df184612b9ea470727fcbff2fce38370  docs/PORT-MAPPING.md
-8e5b0bc01ae3e09553db90918a1a57caca897c64bb561975fa6c6c4b6c1d4530  docs/RESEARCH.md
+d154a9ce441c16432b9cc3e508a5eddbb89b3b864e130b437efb1f94dc1b981d  docs/RESEARCH.md
 bb4ada3b509b199a27379cacc137b7edff97119e93789b3da4be49c486e906da  README.md
 # User-labeled physical-port evidence; no runtime board configuration.
 e60c8aab9d35dd8c48a59e1e1646dd5db74151311141d3532abdacac0fecb92d  docs/port-map-20260918.json

@@ -165,3 +165,47 @@ Git空白与新清单检查通过，未重跑未修改的历史测试。
 没有执行make、defconfig、编译器、预处理器、dtc、固件生成或本轮新硬件测试。
 下一步是正常RX环转换/指针/补充与安全停机、完整TX元数据及MAC/NP/PPU接入。
 四口收发与持久安装仍未实现；不加入光口、双核或时钟策略试验。
+
+## 2026-09-18：正常 RX 路径、DMA 缓冲区管理与内核构建接入
+
+基线 `2f43012679237023bb0092940864a3e403c46fa4`，继续在 Ethernet 分支开发。
+本轮没有新增实机反馈；重读现有原厂采集包并复核 70 项 SHA256SUMS，
+从原始备份重新只读提取并核对 np_133.ko。未执行采集脚本或连接原厂设备。
+新增二进制分析、函数范围指纹及边界见 [IDM-RX.md](IDM-RX.md)、
+[idm-rx-evidence.json](idm-rx-evidence.json)；它们不是原采集报告已有的结论。
+
+通过 netif_napi_add 的重定位确认 .text+0x15c54 的正常 RX poll。
+反汇编器显示的前一全局符号 idm_rx_test 不能用作此匿名函数的名字。
+在此路径确认小端描述符、正常数据位于返回 buffer base+128；
+RX BP 初始化则反转每个地址，使用大端 u32。24 个队列的 pending 计数位于
+IDM+0xc4..0xf0 的成对半字，不能与累计统计寄存器的拼接方式混用。
+release 在 +0x88，bit31 忙时不能写；refill 在 +0x100，normal/jumbo 分别在低/高半字。
+保留原厂 24/1024 RX 几何；没有照搬社区 SR1010 的队列与交换机/VLAN 对应。
+
+新增 skd840n-idm-rx.c/.h，实际使用 DMA API 分配描述符、BP 和独立 payload 映射。
+地址必须命中自有映射并匹配 buffer pool，绝不把描述符地址直接转为 CPU 指针。
+按边界检查后同步给 CPU、调用同步复制回调、同步回设备；清描述符并 release 后，
+才补入对应 BP 环并发布 credit。release 忙时保留每队列一个待处理项，不重复交付或补充。
+24 队列采用旋转起点和每队列 32 项限额；more 明确指出未完成工作，不能直接把
+work<budget 当成 NAPI 可完成的证明。错误指针/重复占用/计数超限触发隔离并保留内存。
+
+destroy 在地址可能对硬件可见后必须调用上层 quiesce；失败时不释放或 unmap，
+保留句柄且禁止重新发布初始 credits。这个回调只有接口约定，尚无本机硬件实现。
+上层仍须真实停止所有 DMA、同步 IRQ/NAPI/work 并保持 device/MMIO 生命周期；
+IRQ 屏蔽和队列为空不能替代停机证明。分散 DMA 分配和 MMIO 时序仍未实机验证。
+
+补丁 150、zte/Kconfig/Makefile 与显式 CONFIG_SKD840N_IDM_RX=y 接入实际内核构建。
+组件没有 initcall/probe/compatible/netdev；现有镜像启动不会自动调用它或启用 DMA。
+既有 MDIO/SFC 驱动、DTS、FIT 地址与限制、保留内存及升级拒绝路径没有改变。
+没有恢复完整正常 TX metadata/完成回收，也没有实现 NP/PPU/SMAC 冷初始化。
+因此仍不是可进行 LAN4 ping 的固件；不要求再次采集相同 PHY 表。
+
+验证：新增 25 项通过（21 项实际 C 函数的有限控制流解释与故障注入、4 项源码接入检查），
+此前 20 项 IDM-core 测试重跑通过，无跳过。5 个故意注入的错误分别被测试检出：
+BP 字节序、128 字节偏移、停机失败仍释放、遗漏 more、busy 时提前 repost。
+模型 mock DMA/MMIO/复制回调，不执行分配/hash 实现、不证明 C ABI、缓存一致性、
+总线延迟或并发硬件；不是实机、编译器或链接测试。
+补丁 150 对 6.12.103 Kconfig/Makefile 的对应开头摘录零 fuzz/offset 应用成功，
+没有重放完整发行版补丁链。原文件 blob、变更文件 SHA256 和 Git 空白检查通过。
+本轮未运行 make、defconfig、C 预处理器/编译器、dtc 或新固件；其他历史测试未重跑。
+可选的异机动作仅是 target/linux/compile 验证新 .o 的 API；没有新的设备测试命令。

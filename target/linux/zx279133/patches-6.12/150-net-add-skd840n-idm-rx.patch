@@ -1,0 +1,28 @@
+Subject: [PATCH] net: build the SK-D840N IDM receive transport component
+
+Compile the real DMA/ring implementation for API checking on the build host.
+It has no probe, initcall, resource claim or netdev registration. A complete
+NP/MAC parent must provide verified engine initialization and quiescence.
+Keep this build integration local to the experimental ZX279133 target.
+
+--- a/drivers/net/ethernet/Kconfig
++++ b/drivers/net/ethernet/Kconfig
+@@ -12,6 +12,8 @@
+ 
+ if ETHERNET
+ 
++source "drivers/net/ethernet/zte/Kconfig"
++
+ config MDIO
+ 	tristate
+ 
+--- a/drivers/net/ethernet/Makefile
++++ b/drivers/net/ethernet/Makefile
+@@ -3,6 +3,7 @@
+ # Makefile for the Linux network Ethernet device drivers.
+ #
+ 
++obj-$(CONFIG_SKD840N_IDM_RX) += zte/
+ obj-$(CONFIG_NET_VENDOR_3COM) += 3com/
+ obj-$(CONFIG_NET_VENDOR_8390) += 8390/
+ obj-$(CONFIG_NET_VENDOR_ACTIONS) += actions/

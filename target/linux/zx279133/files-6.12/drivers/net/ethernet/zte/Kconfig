@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: GPL-2.0-only
+config SKD840N_IDM_RX
+	bool "SK-D840N IDM RX transport (development component)"
+	depends on ARM64 && HAS_DMA
+	default n
+	help
+	  Build the receive-ring and DMA-buffer component for SK-D840N.
+	  This has no probe or initcall and does not enable hardware by itself.
+	  A complete NP/MAC parent with verified initialization and quiescence
+	  is still required. This option does not create a usable netdev.

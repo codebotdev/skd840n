@@ -1,0 +1,83 @@
+{
+  "scope": "Additional read-only binary analysis; not new hardware validation",
+  "base_commit": "2f43012679237023bb0092940864a3e403c46fa4",
+  "factory_archive_sha256": "be768b0721fb8c7ce709102bb66d8d3ff5b5a49915a2fc462afad54cf258638e",
+  "backup_sha256": "0d168f3691fe0fa0e5496b7cfa3163fc27c8d198a988a3d11f5c80fb4e367d64",
+  "module_sha256": "732425ba1b0cf902af72402054f4f50628c487f5134f3f1e4647871646c897e1",
+  "fingerprints": [
+    {
+      "label": "normal_rx_poll_registration",
+      "text_offset": "0xf3e0",
+      "bytes": 76,
+      "sha256": "16babc11d5772d7d83ff1b11335f495cc2cb38d3903cb21fc7ae353230819f7d"
+    },
+    {
+      "label": "normal_rx_poll_text_range",
+      "text_offset": "0x15c54",
+      "bytes": 11420,
+      "sha256": "042197244cec2c37925aa7988384b18adea723ac03b86363d4780d1ebe56479f"
+    },
+    {
+      "label": "idm_new_bp_update",
+      "text_offset": "0xe224",
+      "bytes": 96,
+      "sha256": "905bd33968fc25f725e5f3595e8f9dd6b9ea689be20531b645014ea07ab18af8"
+    },
+    {
+      "label": "idm_pkt_recv_update",
+      "text_offset": "0x148fc",
+      "bytes": 92,
+      "sha256": "05e934726775e8a64b1c5c74d5d210c0dd4071e6a0fa89702a74b514feef075c"
+    },
+    {
+      "label": "idm_rx_pkts_update",
+      "text_offset": "0x14958",
+      "bytes": 104,
+      "sha256": "44414e13ebcaf1ec2df22ffea5d13b4e3854c0dd0bc0c6fc6295060e3650f155"
+    },
+    {
+      "label": "idm_rx_bp_init",
+      "text_offset": "0x18e58",
+      "bytes": 632,
+      "sha256": "e700aa367fe996921f4b99ff2a033934ac2bbeceda4128ace8e55e2c46594cd0"
+    }
+  ],
+  "normal_rx": {
+    "descriptor_words": "little-endian u32 in the analyzed normal path",
+    "bp_addresses": "big-endian u32",
+    "headroom_bytes": 128,
+    "headroom_instructions": [
+      "0x1649c",
+      "0x17744"
+    ],
+    "count_register_first": "0xc4",
+    "count_register_last": "0xf0",
+    "queues": 24,
+    "bits_per_pending_count": 16,
+    "release_register": "0x88",
+    "release_busy_bit": 31,
+    "release_queue_shift": 12,
+    "refill_register": "0x100",
+    "refill_normal_shift": 0,
+    "refill_jumbo_shift": 16,
+    "refill_chunk_max": 1024
+  },
+  "kernel_interfaces": {
+    "version": "6.12.103",
+    "ethernet_kconfig_blob": "af09a658cbf6aff4e57d12050e865bdcb87c9ecc",
+    "ethernet_makefile_blob": "67182339469a0d8337cc4e92aa51e498c615156d",
+    "slab_header_blob": "28eba6cbb767077a0a8d55a1b05a5a84a005e69c"
+  },
+  "primary_references": [
+    "https://www.kernel.org/doc/html/v6.12/core-api/dma-api-howto.html",
+    "https://github.com/gregkh/linux/blob/v6.12.103/include/linux/slab.h",
+    "https://github.com/cnjn/linux-mainline-zte-zxslc-sr1010/blob/07f8687248578d4be6931c665ff5d08bb6cc3d9d/drivers/net/ethernet/zte/zx279133-idm.c"
+  ],
+  "limitations": [
+    "Anonymous RX poll range is identified via netif_napi_add relocations, not the preceding exported symbol name.",
+    "No complete NP/PPU/MAC initialization or verified hardware quiesce implementation.",
+    "No normal TX template, payload-return ownership or netdev parent in this commit.",
+    "Individual DMA buffers and ordered MMIO credit handling have not been tested on hardware.",
+    "No compiler, C preprocessor, Kconfig evaluation, make or device execution locally."
+  ]
+}

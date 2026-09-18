@@ -1,5 +1,8 @@
 # SK-D840N：原厂证据与 IDM 数据面基础代码
 
+Continuation: [IDM RX transport and build integration](IDM-RX.md). The
+original record below describes the preceding offline-only implementation.
+
 ## 当前交付边界
 
 本轮基线为 `ca218d16a8560ec5961f63435132b59baae29b88`。以用户提供的
