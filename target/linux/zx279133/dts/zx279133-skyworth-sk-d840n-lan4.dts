@@ -1,0 +1,50 @@
+// SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
+/* Dedicated manual-activation LAN4 test. Existing profiles stay unchanged. */
+#include "zx279133-skyworth-sk-d840n-mdio.dts"
+
+/ {
+	model = "Skyworth SK-D840N (LAN4 CPU-direct RAM test)";
+};
+
+&{/reserved-memory} {
+	/* New pool, separate from WOE and inherited dynamic PON reservation.
+	 * RX streaming buffers remain DMA-API-managed allocations, not this pool.
+	 */
+	lan4_dma: dma-pool@94000000 {
+		compatible = "shared-dma-pool";
+		reg = <0 0x94000000 0 0x04000000>;
+		no-map;
+	};
+};
+
+/* The test parent owns MDIO0 exclusively; never bind a second driver. */
+&mdio0_diag {
+	status = "disabled";
+};
+
+&{/soc} {
+	lan4_test: ethernet@19000000 {
+		compatible = "skyworth,sk-d840n-lan4-direct";
+		reg = <0 0x19000000 0 0x01000000>,
+		      <0 0x18000000 0 0x01000000>,
+		      <0 0x14f01000 0 0x1000>;
+		reg-names = "nppt", "pps", "mdio0";
+		interrupts = <GIC_SPI 1 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 2 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 3 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 4 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&topcrm ZX279133_TOPCRM_CLK_PON_IDM_ACLK>,
+			 <&topcrm ZX279133_TOPCRM_CLK_PON_TM_ACLK>,
+			 <&topcrm ZX279133_TOPCRM_CLK_PON_PCLK>,
+			 <&topcrm ZX279133_TOPCRM_CLK_PON_SMAC_WCLK>,
+			 <&topcrm ZX279133_TOPCRM_CLK_PON_WOE1_WCLK>,
+			 <&topcrm ZX279133_TOPCRM_CLK_PON_MAC_WCLK>,
+			 <&lsp1_clk ZX279133_LSP1_CLK_MDIO0_PCLK>,
+			 <&lsp1_clk ZX279133_LSP1_CLK_MDIO0_WCLK>;
+		clock-names = "idm-aclk", "tm-aclk", "pclk", "smac-wclk",
+			      "woe1-wclk", "mac-wclk", "mdio-pclk", "mdio-wclk";
+		resets = <&lsp1_clk ZX279133_LSP1_RESET_MDIO0>;
+		reset-names = "mdio";
+		memory-region = <&lan4_dma>;
+	};
+};

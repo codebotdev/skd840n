@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# From target/linux/zx279133: sha256sum -c docs/SOURCES-lan4-recovery.sha256
+# Source recovery, test scope and limitations: LAN4-TEST.md; no firmware included.
+1dd121d49cc2c12bea002d7ec01ee85fc2555b2101c312402ab2ca08eac509ed  README.md
+c7c9ebcfe8e098880452019487488163076df9357cdd12ef7761d386149fe32c  base-files/usr/sbin/skd840n-lan4-test
+df5ab84a6651072e9545b27a678fc774293a875093fa4ceb0e74a16932ec42ae  config-6.12
+f88480d58e84befcae1f26f6cc82ff5df0964cc4175fe4af62bb29120f0deda8  docs/LAN4-TEST.md
+a171da9c841ba4b43455e39e3a35691b02e4b498fdaced1ee8e5ac0c1c5d6f82  docs/RESEARCH.md
+acd42fc032b7ee3c4dc8bfec1689c0cde43d3c3dbfc4991513d8e1ea53888f35  docs/build-lan4.config
+5c1b272055fa0218ccea058f973734b31b65b262c17a86e8f36a539493bfea7e  docs/lan4-direct-evidence.json
+2fb08eab4ea93234fd0b61947924605c831fb3e9738b7f5e78a601332900d303  dts/zx279133-skyworth-sk-d840n-lan4.dts
+61d402b76a59d6fd9f8891048968b8b79aa1e839599c56a978116656d4d34635  files-6.12/drivers/net/ethernet/zte/Kconfig
+a5b28adab9b88a8b797207328a3e2f268cd5395b05316e9af09bdb951c61389d  files-6.12/drivers/net/ethernet/zte/Makefile
+6e60b84e70cc7c8c237ba28f525e2fe1279342db3c84696854e8841fe2302c8e  files-6.12/drivers/net/ethernet/zte/skd840n-lan4-format.h
+6a331c82811878d2a9d57a48073144aa46b515d25635eb942f4f5c19d6b2fd1d  files-6.12/drivers/net/ethernet/zte/skd840n-lan4-hw.c
+b282586fcea62a5e456a8e0117f438285432089b45f3426c352d467e27654186  files-6.12/drivers/net/ethernet/zte/skd840n-lan4.c
+de806d7b762c5a392ab080d939b6568931128de497f7e2565c90d36f996008ec  files-6.12/drivers/net/ethernet/zte/skd840n-lan4.h
+29f947d27c92de4797f3b3714495969cf08e302b6feb0e2a2796c27e9bbeef73  image/Makefile
+f474ed76081c020ee8f95018b196294172af7621506566b5b0ad212acfe22971  tests/lan4_model.py
+5eb6f8cbe8f2e720cbe058875f9d0a1d25749baea2e3213105a5ffae64550f67  tests/test_lan4_recovery.py
+ba950addf065519fdb0ba1b46f4192b93d9622f01ddcd02637fb083a3b4bb059  tools/select-lan4.py
+bb4ada3b509b199a27379cacc137b7edff97119e93789b3da4be49c486e906da  README-PRE-LAN4-RECOVERY.md
+03adb6e87a94553826eb6f4a513feccdb44ed6cc9116f47a512ec760b46feaf3  docs/RESEARCH-PRE-LAN4-RECOVERY.md

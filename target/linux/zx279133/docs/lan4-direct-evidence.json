@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "revision": "lan4-direct-recovery-v1",
+  "baseline": "1ef3686aaeef3717bb8f8823aca002fba352409d",
+  "status": "recovered and revised source; no integrated build or hardware validation",
+  "interface": "lan4test",
+  "path": "CPU-direct / PPU bypass experiment, not full normal NP/SE/PPU datapath",
+  "loads_microcode": false,
+  "recovery": {
+    "prior_patch_files_existed": false,
+    "prior_70_test_claim_verified": false,
+    "source": "previous generation records; not a byte-identical resend",
+    "new_checks": 34,
+    "rerun_idm_core_checks": 20,
+    "rerun_rx_checks": 25,
+    "hardware_claim": null
+  },
+  "earlier_evidence": {
+    "factory_capture_sha256": "be768b0721fb8c7ce709102bb66d8d3ff5b5a49915a2fc462afad54cf258638e",
+    "backup_sha256": "0d168f3691fe0fa0e5496b7cfa3163fc27c8d198a988a3d11f5c80fb4e367d64",
+    "module_sha256": "732425ba1b0cf902af72402054f4f50628c487f5134f3f1e4647871646c897e1",
+    "new_binary_reanalysis_this_recovery": false,
+    "panel": "LAN4",
+    "factory_interface": "eth3",
+    "sdk_port": 3,
+    "smac": 3,
+    "phy_bus_hex": "14f01000",
+    "phy_address_hex": "0d",
+    "phy_id_hex": "84b95032",
+    "documents": ["factory-ethernet-20260918.json", "port-map-20260918.json", "IDM-CORE.md", "IDM-RX.md"]
+  },
+  "shared_tm_reference": {
+    "repository": "cnjn/linux-mainline-zte-zxslc-sr1010",
+    "commit": "07f8687248578d4be6931c665ff5d08bb6cc3d9d",
+    "file": "drivers/net/ethernet/zte/zx279133-tm.c",
+    "blob": "52740f3dda7bc2d732754fec8dc7bb4750ff1480",
+    "license": "GPL-2.0-only",
+    "not_imported": ["external switch topology", "SerDes recipe", "firmware", "offload"]
+  },
+  "limits": {
+    "tx_submissions": 512,
+    "tx_ring_depth": 1024,
+    "tx_slot_reuse": false,
+    "rx_stop_threshold": 512,
+    "rx_threshold_checked_after_bounded_poll": true,
+    "mtu_max": 1500,
+    "coherent_pool_start_hex": "94000000",
+    "coherent_pool_size_hex": "04000000",
+    "streaming_rx_payloads_confined_to_pool": false,
+    "exposed_memory_released_on_fault_or_stop": false,
+    "full_hardware_stop_proven": false,
+    "retry_requires": "cold power cycle"
+  },
+  "unverified": [
+    "new C compilation and complete kernel configuration evaluation",
+    "MMIO/reset/readiness and inherited DMA state",
+    "CPU-direct TX metadata and RX source port on this board",
+    "DMA/cache consistency, interrupt and NAPI concurrency",
+    "packet delivery, ping, stability, multiport routing"
+  ]
+}

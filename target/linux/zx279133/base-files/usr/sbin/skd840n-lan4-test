@@ -1,0 +1,44 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+# Explicit RAM-only experiment; no flash, UCI or boot environment writes.
+usage() { echo 'Usage: skd840n-lan4-test start|status|stop'; }
+[ "$#" -eq 1 ] || { usage >&2; exit 2; }
+case "$1" in start|status|stop) ;; --help) usage; exit 0 ;; *) usage >&2; exit 2 ;; esac
+state=/sys/class/net/lan4test/device/test_state
+[ -r "$state" ] || { echo 'Missing LAN4 test driver; boot the -lan4 FIT.' >&2; exit 1; }
+if ! current="$(cat "$state")"; then
+	echo 'Cannot read test state.' >&2
+	exit 1
+fi
+printf '%s\n' "$current" | grep -q '^version=lan4-direct-recovery-v1 interface=lan4test ' || {
+	echo 'Unexpected driver version; refusing activation.' >&2
+	exit 1
+}
+case "$1" in
+	start)
+		[ "$(id -u)" = 0 ] || { echo 'Root is required.' >&2; exit 1; }
+		case "$current" in *attempted=1*)
+			echo 'Already activated this boot. Power-cycle before another activation.' >&2
+			exit 1 ;;
+		esac
+		if ! ip link set dev lan4test up; then
+			cat "$state"
+			echo 'Activation failed. Save dmesg and test state; do not retry in this boot.' >&2
+			exit 1
+		fi
+		if ! ip -4 addr show dev lan4test | grep -q 'inet 192.168.1.1/24 '; then
+			ip addr add 192.168.1.1/24 dev lan4test || exit 1
+		fi
+		echo 'Armed with 192.168.1.1/24. This is NOT proof of link or packet delivery.'
+		;;
+	stop)
+		ip link set dev lan4test down || exit 1
+		echo 'Software stopped; DMA memory retained. Cold power-cycle before another test.'
+		;;
+esac
+cat "$state" || exit 1
+ip -s link show dev lan4test || exit 1
+ip addr show dev lan4test || exit 1
+if grep -q ' error=-' "$state"; then
+	exit 1
+fi

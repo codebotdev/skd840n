@@ -1,159 +1,66 @@
-# SK-D840N：RAM 启动与只读外设适配
+# SK-D840N: LAN4 CPU-direct RAM experiment (recovery revision)
 
-基于 ImmortalWrt **v25.12.2 / Linux 6.12.103**。
+The current integrated experiment is documented in [LAN4-TEST.md](docs/LAN4-TEST.md).
+Its interface is **lan4test**, its helper is **skd840n-lan4-test**, and it does
+**not load microcode**. It is not the full normal NP/SE/PPU Ethernet driver.
+No successful build, RAM boot, packet reception or ping is claimed for this
+integrated revision. The earlier RX component has external build evidence only.
 
-2026-09-18 的 063327 实机日志已验证只读链路快照，并按用户 lan1..lan4 标记
-建立本机 PHY 映射：lan1=14f02000:05，lan2/3/4=14f01000:0b/0c/0d（地址十六进制）。
-14f01000:0a 保持未映射；lan1 的 C22/PMA up 与 PCS down 差异保留，不猜测原因。
-**四口 PHY 对应不等于四口 Ethernet 收发；MAC/SerDes 与 DMA 数据面仍未实现。**
-本轮只记录证据并给用户态采集工具增加可选标签，不改内核、DTS、配置或 FIT。
-当前可启动镜像可以保留使用，不需要为确认此次映射重新编译。
+Delivery status: the connector blocked completion of the GitHub upload. The
+remote recovery branch still points to the old baseline; use the supplied patch
+kit, not a branch-only checkout, for this revision.
 
-| profile | 内容 |
-|---|---|
-| `skyworth_sk-d840n` | 原基础 DTS，串口/RAM 启动 |
-| `skyworth_sk-d840n-mdio` | 优先测试：仅 MDIO PHY-ID 诊断，删除 SFC/NAND 节点 |
-| `skyworth_sk-d840n-io` | 独立后续测试：MDIO 诊断、受限只读 SPI-NAND |
+This recovery replaces previously announced download links whose files did not
+exist. The prior claims of a microcode-containing kit, interface `lan4`, and
+70 passing integrated tests were not supported and must not be used.
 
-三者共用内核配置和 cacheinfo 修复；重新构建的基础镜像也需重新验证。
-请保留目前能启动的旧 `.itb`，不要覆盖唯一可用副本。
+The original README is retained byte-for-byte in
+[README-PRE-LAN4-RECOVERY.md](README-PRE-LAN4-RECOVERY.md).
+[Research history and this revision](docs/RESEARCH.md) separate previous verified
+results from the experimental integration. The baseline profiles are unchanged;
+only the new `skyworth_sk-d840n-lan4` DTS instantiates this driver.
 
-## 文档入口
+## Build host (not the device)
 
-[PHY 实测结果与逐口链路映射](docs/PORT-MAPPING.md) 包含最新四口对应、PCS 差异及标签用法。
-[MDIO-only 构建、RAM 启动和验收](docs/MDIO-BRINGUP.md) 保留初始 ID 诊断步骤；
-其中早期“未编译/未启动”的状态由本次新实机记录更新。
-[只读 I/O 测试](docs/IO-BRINGUP.md) 保留为之后的 NAND 独立验证步骤。
-[研究记录](docs/RESEARCH.md) 保留全部历史反馈、根因与每轮验证限制。
-[闪存证据](docs/FLASH-EVIDENCE.md) 只包含可公开的硬件字段和校验值。
-配置种子为 [基础](docs/build.config)、[MDIO-only](docs/build-mdio.config)
-和 [I/O](docs/build-io.config)；均为顶层 `.config` 的起点，不是内核配置。
-
-## 历史构建问题：register_mtd_blktrans_devs
-
-2026-09-18 的 `build-skd840n-mdio-kernel-retry.log` 已越过配置问答和驱动 C 编译。
-`undefined reference to register_mtd_blktrans_devs` 来自 generic 402 补丁无条件调用
-未编入的块转换层函数；紧随其后的 `R_AARCH64_CALL26` 是对同一未定义符号的诊断，
-不需要改变 Image 加载地址、放宽 32 MiB 上限或修改工具链。
-
-新增 target 补丁 140：当 `CONFIG_MTD_BLKDEVS` 关闭时提供空 inline hook；
-启用时保留原外部声明。不打开 MTD_BLOCK/MTD_BLOCK_RO，不改 NAND 命令白名单。
-详细来源与当时的验证限制见 [历史研究记录](docs/RESEARCH-20260918-HISTORY.md) 末节。
-
-在编译机同步当前分支后，保留已有 `.config` 和 feeds，在 Bash 中重试：
+Preserve the known-good ITB, existing .config, feeds and toolchain. Synchronize
+the baseline and apply the supplied recovery patch, then run from the complete
+source root in Bash:
 
 ```bash
 (
     set -e
     set -o pipefail
+    python3 target/linux/zx279133/tools/select-lan4.py .config
+    make defconfig
     make target/linux/clean
-    make -j1 V=s target/linux/compile 2>&1 | tee build-skd840n-mdio-linkfix-kernel.log
-    make -j"$(nproc)" V=s 2>&1 | tee build-skd840n-mdio-linkfix.log
+    make -j1 V=s target/linux/compile 2>&1 | tee build-skd840n-lan4-kernel.log
+    make -j"$(nproc)" V=s 2>&1 | tee build-skd840n-lan4.log
 )
 ```
 
-新增补丁需要重新准备内核；不清理工具链、不重新复制配置种子。
-只有内核成功才继续完整构建；启动方法仍按 MDIO-BRINGUP.md，不先进行刷写。
-该历史修复当时仅运行 `tests/test_mtd_blktrans.py` 的 9 项静态测试和补丁应用检查，
-未运行编译器、C 预处理器、make、dtc 或固件测试。
+The selector backs up .config and preserves package choices. Do not install any
+firmware blob for this direct experiment. The expected output is
+`bin/targets/zx279133/generic/immortalwrt-zx279133-generic-skyworth_sk-d840n-lan4-initramfs-fit.itb`.
+Build failure stops the sequence; do not weaken configuration checks or Werror.
 
-## 基础 profile 的编译与启动
+## Device test
 
-以下仅供用户的另一台编译机执行。本轮未在本地执行 make、defconfig 或编译器。
-使用完整源码；新工作区按 ImmortalWrt 要求安装依赖并初始化 feeds。
-已有工作区保留 feed 提交，先备份个人 `.config`：
-
-```sh
-[ ! -f .config ] || cp .config .config.before-skd840n
-cp target/linux/zx279133/docs/build.config .config
-make defconfig
-make target/linux/clean
-```
-
-在 Bash 中构建，上一条成功后才继续下一条：
+Follow the complete [RAM boot and activation procedure](docs/LAN4-TEST.md).
+Keep serial attached, use an isolated 1G peer on physical LAN4 only, and leave
+other RJ45/optical ports disconnected during the experiment. The netdev is DOWN
+until explicit activation. No NAND or persistent environment writes are needed.
 
 ```sh
-set -o pipefail
-make -j1 V=s target/linux/compile 2>&1 | tee build-skd840n-kernel.log
-make -j"$(nproc)" V=s 2>&1 | tee build-skd840n.log
-```
-
-记录 Git、feeds 提交、`.config`、完整日志和产物 SHA256。
-出现 Restart config 不要自动回答或删除 FAIL_ON_UNCONFIGURED；
-时钟 API 错误不通过强转或关闭 Werror 绕过。
-之前 image-.dtb 问题已用延迟展开 KERNEL_INITRAMFS 修复，不需要伪造同名 DTB。
-这些历史问题的详细原因和验证限制仍在 RESEARCH.md 中。
-
-产物位于 `bin/targets/zx279133/generic/`；基础文件名以
-`skyworth_sk-d840n-initramfs-fit.itb` 结尾。
-用 `staging_dir/host/bin/dumpimage -l FIT_FILE` 核对 ARM64/Linux/gzip、
-load/entry `0x80000000`、`conf@133` 引用 `kernel@1`/`fdt@133`。
-内嵌 initramfs，不需要独立 ramdisk；不生成 factory/sysupgrade 镜像。
-
-尽早中断原厂自动启动，确认 512 MiB RAM 与重定位/栈/预留无冲突。
-TFTP 电脑为 `192.168.1.101/24`，文件名按实际基础产物替换：
-
-```text
-setenv ipaddr 192.168.1.1
-setenv serverip 192.168.1.101
-tftpboot 0x88000000 immortalwrt-zx279133-generic-skyworth_sk-d840n-initramfs-fit.itb
-setenv bootm_low 0x80000000
-setenv bootm_size 0x10000000
-setenv fdt_high 0x8fffffff
-setenv bootargs 'console=ttyAMA0,115200n8 earlycon=zteuart,0x10d0d000 rdinit=/init maxcpus=1 clk_ignore_unused loglevel=8'
-bootm 0x88000000#conf@133
-```
-
-传输成功且字节数正确才执行 bootm。可用性已由 help 确认的 loady/YMODEM
-是串口传输备选，不代表新内核网卡可用。纯 FIT 不加 `0x1e0`。
-不执行 saveenv、不调用可能保存环境的 zxboot，不刷写 NAND 或替换 U-Boot。
-这并不保证原厂更早的启动阶段绝未写过闪存。
-
-Image 含 BSS 占用和 FIT 文件仍各限 32 MiB，避开 `0x82b00000` 的原厂对象；
-保留 WOE `[0x91000000,0x93000000)` 和原动态 PON 预留。
-不用光口不等于固件 DMA 已停止；不随意回收内存或关闭遗留时钟。
-Linux watchdog 驱动未启用也不证明固件 watchdog 已关闭。
-
-## 串口检查
-
-```sh
-uname -a
-cat /proc/cmdline
-cat /proc/cpuinfo
-cat /proc/iomem
-cat /proc/interrupts
-ip link show
+skd840n-lan4-test status
+skd840n-lan4-test start
+# Continue only when activation succeeds and error=0.
+ping -c 5 192.168.1.101
+skd840n-lan4-test status
 dmesg
-grep -qs ' /sys/kernel/debug debugfs ' /proc/mounts || mount -t debugfs debugfs /sys/kernel/debug
-cat /sys/kernel/debug/clk/clk_summary
 ```
 
-该 BusyBox 不支持 `ip -br`。debugfs 已挂载时无需重复 mount。
-旧日志没有 `/proc/mtd` 是旧版关闭 MTD 的结果；现在启用核心，但基础 DTS 无 NAND 节点。
-目前仍没有 Ethernet 数据面，只有 lo 不等于硬件网口损坏。
-新镜像提供 `skd840n-diag`，默认只采集被动信息；先分开运行 `--mdio-c22`
-和 `--mdio-c45`，兼容的 `--mdio` 选项同时读取两种 ID。
-缺少显式请求的接口、读取失败或结果含 `error=` 时退出 1，不再静默视为成功。
-本分支增加 cacheinfo 首核回退修复，不伪造缓存大小；详见 MDIO-BRINGUP.md。
-
-确认单核稳定后，再单独用基础镜像去掉临时 `maxcpus=1` 验证双核。
-当前日志没有证明双核故障，也没有证明长期稳定。
-保留从复位到 shell 的完整日志；异常时重新上电并使用保留的旧 FIT 对照，
-不通过刷写或修改 bootloader 绕过问题。
-
-## 本地检查
-
-```sh
-PYTHONDONTWRITEBYTECODE=1 python3 target/linux/zx279133/tests/test_port_labels.py
-PYTHONDONTWRITEBYTECODE=1 python3 target/linux/zx279133/tests/test_phy_link.py
-PYTHONDONTWRITEBYTECODE=1 python3 target/linux/zx279133/tests/test_mtd_blktrans.py
-PYTHONDONTWRITEBYTECODE=1 python3 target/linux/zx279133/tests/test_handoff.py
-PYTHONDONTWRITEBYTECODE=1 python3 target/linux/zx279133/tests/test_readonly_io.py
-sh -n target/linux/zx279133/base-files/usr/sbin/skd840n-diag
-git diff --check
-```
-
-历史 Image 检查仍可运行
-`python3 target/linux/zx279133/image/test_check_image.py`，但本轮没有重跑。
-后续目标是按真实 PHY/SerDes/微码 ABI 实现单口数据收发，再扩至四口与 1 WAN + 3 LAN。
-光口不在本次目标内。当前所有配置仅在 RAM，升级检查和写入入口仍拒绝 sysupgrade。
+The helper assigns 192.168.1.1/24 to **lan4test**, not lan4. Peer: 192.168.1.101/24.
+TX is capped below ring depth to avoid reusing TX payload slots. Exposed memory
+is retained on stop/failure because full hardware quiescence is not proved.
+Cold power-cycle before another activation; do not test suspend, unbind, module
+unload, warm restart, routing, throughput or long-running traffic.

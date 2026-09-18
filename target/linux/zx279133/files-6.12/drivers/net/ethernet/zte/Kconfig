@@ -8,3 +8,15 @@ config SKD840N_IDM_RX
 	  This has no probe or initcall and does not enable hardware by itself.
 	  A complete NP/MAC parent with verified initialization and quiescence
 	  is still required. This option does not create a usable netdev.
+
+config SKD840N_LAN4_TEST
+	bool "SK-D840N LAN4 one-shot CPU-direct RAM test"
+	depends on ARM64 && OF && OF_RESERVED_MEM && SKD840N_IDM_RX
+	select DMA_DECLARE_COHERENT
+	default n
+	help
+	  Experimental LAN4 netdev with a dedicated coherent DMA pool,
+	  direct TX, PPU bypass and all-queue RX. Only binds the test DTS.
+	  Manual activation, once per cold boot, with a 512-frame TX limit.
+	  No TX payload slot is reused; exposed memory is never freed before
+	  a cold power cycle. No unbind, suspend, routing, offload or install.

@@ -53,4 +53,13 @@ define Device/skyworth_sk-d840n-mdio
 endef
 TARGET_DEVICES += skyworth_sk-d840n-mdio
 
+# Isolated CPU-direct experiment, not a production router profile.
+define Device/skyworth_sk-d840n-lan4
+  DEVICE_VENDOR := Skyworth
+  DEVICE_MODEL := SK-D840N
+  DEVICE_VARIANT := LAN4 CPU-direct RAM test (recovery)
+  DEVICE_DTS := zx279133-skyworth-sk-d840n-lan4
+endef
+TARGET_DEVICES += skyworth_sk-d840n-lan4
+
 $(eval $(call BuildImage))
