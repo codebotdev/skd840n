@@ -44,4 +44,13 @@ define Device/skyworth_sk-d840n-io
 endef
 TARGET_DEVICES += skyworth_sk-d840n-io
 
+# PHY identification without probing the experimental SPI-NAND controller.
+define Device/skyworth_sk-d840n-mdio
+  DEVICE_VENDOR := Skyworth
+  DEVICE_MODEL := SK-D840N
+  DEVICE_VARIANT := MDIO-only RAM bring-up (experimental)
+  DEVICE_DTS := zx279133-skyworth-sk-d840n-mdio
+endef
+TARGET_DEVICES += skyworth_sk-d840n-mdio
+
 $(eval $(call BuildImage))

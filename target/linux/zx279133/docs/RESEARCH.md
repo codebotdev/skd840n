@@ -388,3 +388,62 @@ RESET 保留已确认的不可变芯片身份，兼容 resume 不重读 ID 的�
 必要时只读第一页作哈希比对。再依据真实 PHY/SerDes/微码 ABI 实现单口 DMA 收发，
 随后扩至四口。原厂/社区微码 CRC 不同不能证明绝对不兼容，也不能直接互换。
 双核测试与新外设测试分开进行，不同时取消 maxcpus=1 和 clk_ignore_unused。
+
+## 2026-09-18：cacheinfo 首核回退修复；MDIO 与 NAND 分阶段验证
+
+开发基线：`65d9b2cf8eee351f207ef61cfc4c7be0367fe851`，
+分支 `skd840n/readonly-io-20260918`。本次“继续”没有附带新的实机测试；
+仍以此前基础镜像的成功启动日志为硬件证据，不把新增代码写成已验证功能。
+
+### 问题与修改
+
+核对 [Linux 6.12.103 cacheinfo.c](https://github.com/gregkh/linux/blob/v6.12.103/drivers/base/cacheinfo.c)
+（Git blob `89410127089b934a4a6871c88cd1aef67846588d`）发现
+cache_setup_properties 在 use_arch_cache_info() 成立时只设置 use_arch_info，
+却仍返回 DT/ACPI 失败码，导致首核的 cache_shared_cpu_map_setup 提前退出。
+补丁 `130-cacheinfo-complete-arch-fallback.patch` 在这一分支清零 ret；
+未支持架构回退时仍返回错误，没有直接屏蔽 printk。
+
+[ARM64 对应实现](https://github.com/gregkh/linux/blob/v6.12.103/arch/arm64/kernel/cacheinfo.c)
+（Git blob `309942b06c5bc27628b0ff2d9d19e5db5b47afbd`）从 CLIDR_EL1 取得层级和类型。
+同类返回路径修复的[内核邮件讨论](https://lists.openwall.net/linux-kernel/2026/06/11/980)
+作为外部核对，不据此声称该修复已在所用稳定版本生效。本次补丁仅放入本 target，
+不编造 cache-size/sets，不改硬件缓存控制；具体 sysfs 属性完整度仍需实机验证。
+
+重新只读解析附件备份的有效 FDT：原厂 CPU 节点与当前最小 DTS 均无缓存参数，
+原厂有单 cluster、两 core 的 cpu-map。未据此推导缓存容量、PHY ID 或双核已可用。
+备份 SHA256 仍为 `0d168f3691fe0fa0e5496b7cfa3163fc27c8d198a988a3d11f5c80fb4e367d64`；
+原文件不变，未提交原始 DTB、备份、身份信息或凭据。
+
+新增 `skyworth_sk-d840n-mdio` profile 和配置种子。其 DTS 复用 I/O DTS，
+再删除整个 spifc 子树及 spi0 别名，避免首次 PHY 识别同时依赖未验证的 NAND 驱动。
+原基础和 -io profile 保留，三者共用内核配置及补丁；未改变 MDIO/SFC C 驱动、
+配置片段、FIT 地址和 32 MiB 限制、内存预留、sysupgrade 拒绝路径。
+这仅描述源码中的探测边界，不保证 U-Boot 更早阶段未访问闪存。
+
+skd840n-diag 新增 --mdio-c22 / --mdio-c45，保留 --mdio 兼容行为。
+默认仍不发 PHY 事务，新增缓存元数据采集；缺失可选字段不伪造。
+请求的 MDIO 端点不存在、读取失败或结果包含 error= 时退出 1，并继续完成报告，
+避免旧脚本将缺失端点或事务超时静默视为成功。退出 0 不是链路或数据面验收。
+
+README 更新优先顺序，新操作说明见 [MDIO-BRINGUP.md](MDIO-BRINGUP.md)；
+先基础对照，再 MDIO，最后独立 NAND。CPU1 试验另行使用基础镜像，只去掉 maxcpus=1。
+bdinfo:vid_list 提示仍未修复，未用未知厂商字段消音；当前光口不在目标内。
+
+### 验证与限制
+
+新增 `tests/test_handoff.py` 的 15 项测试全部通过、无 skipped：
+5 项解释实际补丁后 C 函数的 AST，2 项检查源码契约，8 项在假 sysroot 下测试 shell。
+旧函数复现首核错误；新函数在 DT/ACPI 回退时返回 0，不支持回退时保留原错误。
+默认/C22/C45/兼容双读、参数拒绝、缺失端点和 error=-110 的结果均有回归覆盖。
+
+补丁对复制自 6.12.103 第 326–340 行的函数 fixture 零 fuzz、零 offset 应用；
+不是完整内核或发行版补丁链验证。DTS 检查只是源文本约束，不是 dtc/DT ABI 验证。
+shell 语法、改动文件哈希及 Git 空白检查通过；原 README/RESEARCH/manifest 和
+本轮修改的原始代码副本均以 Git blob SHA 核对，研究记录只追加、历史不改写。
+
+没有执行 make、defconfig、C 编译器/预处理器、dtc、mkimage、完整配置求值或实机启动。
+没有重跑上轮 9 项 I/O 策略测试和旧 Image 边界测试，不将它们计入本轮通过数。
+下一步由用户在编译机完整构建 -mdio FIT，记录提交和产物 SHA256，保持已验证 RAM
+地址与单核参数启动，分别回传被动/C22/C45 日志。真实 PHY、MAC/SerDes 接线、
+微码 ABI 与 DMA 收发仍未验证，Ethernet 四口数据面和持久安装仍未实现。

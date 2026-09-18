@@ -17,8 +17,15 @@
 dfb38f80d3b1a0bbc763a46de68574a4e65281b195f38a1b27d8adcdb5b80739  files-6.12/drivers/spi/spi-skd840n-ro.c
 ea5281d5c706c3b9df220a6045eeaff89a85159c024c748a83d4e562bc958989  patches-6.12/120-skd840n-readonly-io.patch
 d0177ef0dcb73f1e020f30d41fad35c5f35ed4f84459ea59ffb50fbcb64582d4  dts/zx279133-skyworth-sk-d840n-io.dts
-b5b44fee1b2918bca5b9798782c65e82d779a0a1734c498c09f92fe2f1df1ac1  base-files/usr/sbin/skd840n-diag
+c5af637ca6526b57273364c91559245fd792c8856aa32b14d744a506955d6fc7  base-files/usr/sbin/skd840n-diag
 6474e390edb8b3081177fa7f704af8b83c4248b8f5ae1d516e12af49a6f7fbeb  config-6.12
-bb3a9d0753f1fda2a1dda6e40719124ab95d0a5e7b57672d0d73bf38badf21c4  image/Makefile
+0cb886faa7aa4aead80eec04f870f7ae896a19d8f002c9fdb3fe287a119448f9  image/Makefile
 0bb0d5ae46427304534403f01d2c8338a604f560a3c24fb4a2d193a31ddf51fc  docs/build-io.config
 196ed82afd02c1c49c8ebf770593922c19abbe451f75860e983d7c274bff4434  tests/test_readonly_io.py
+# Continuation: gregkh/linux v6.12.103 cacheinfo return-path review.
+# drivers/base/cacheinfo.c: 89410127089b934a4a6871c88cd1aef67846588d
+# arch/arm64/kernel/cacheinfo.c: 309942b06c5bc27628b0ff2d9d19e5db5b47afbd
+cc1924f2588a53b28c5c279c6d378f74076dfdf9620c3dd20a5aac4777069855  dts/zx279133-skyworth-sk-d840n-mdio.dts
+5a6b4b9dafb61736b3d7d154db7a2e15399f7198ee98f4220a15e0bbeba0df45  docs/build-mdio.config
+7030d8d799015afb8e829769673292aa935da86d28b10aff58bd38ae954166c8  patches-6.12/130-cacheinfo-complete-arch-fallback.patch
+4f470fce3c4ed0f697a64cf224f6b2ba7735a83d46e66ed0ebdd1d9bb0bc9047  tests/test_handoff.py

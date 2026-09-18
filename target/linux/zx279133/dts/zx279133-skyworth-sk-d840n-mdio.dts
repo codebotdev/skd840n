@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
+/* Reuse the MDIO wiring, but remove the entire flash controller subtree. */
+#include "zx279133-skyworth-sk-d840n-io.dts"
+
+/delete-node/ &spifc;
+
+/ {
+	model = "Skyworth SK-D840N (MDIO-only RAM bring-up)";
+
+	aliases {
+		/delete-property/ spi0;
+	};
+};

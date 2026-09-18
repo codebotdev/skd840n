@@ -1,0 +1,30 @@
+Subject: [PATCH] cacheinfo: complete architecture fallback for the first CPU
+
+The SK-D840N DT has no cache nodes. Linux 6.12.103 sets use_arch_info when
+architecture-derived cache information is available, but returns the old
+DT/ACPI error. The first CPU therefore fails cache_shared_cpu_map_setup(),
+while subsequent CPUs skip cache_setup_properties(). Clear the error only
+when the existing architecture fallback has been selected.
+
+This target-local fix does not invent cache sizes, add hardware cache
+controls, or suppress errors on architectures without the fallback.
+
+Source: gregkh/linux v6.12.103 drivers/base/cacheinfo.c
+Source-blob: 89410127089b934a4a6871c88cd1aef67846588d
+Related discussion: https://lists.openwall.net/linux-kernel/2026/06/11/980
+
+---
+--- a/drivers/base/cacheinfo.c
++++ b/drivers/base/cacheinfo.c
+@@ -333,8 +333,10 @@
+ 		ret = cache_setup_acpi(cpu);
+ 
+ 	// Assume there is no cache information available in DT/ACPI from now.
+-	if (ret && use_arch_cache_info())
++	if (ret && use_arch_cache_info()) {
+ 		use_arch_info = true;
++		ret = 0;
++	}
+ 
+ 	return ret;
+ }

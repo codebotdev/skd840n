@@ -1,33 +1,64 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-2.0-only
-# Passive collection by default. --mdio explicitly reads only PHY ID registers.
+# Passive by default; explicit options read only standard PHY ID registers.
 
-case "$#:$1" in
-	0:) mdio=0 ;;
-	1:--mdio) mdio=1 ;;
-	*) echo "Usage: skd840n-diag [--mdio]" >&2; exit 2 ;;
+case "$#:${1-}" in
+	0:) mdio=none ;;
+	1:--mdio) mdio=both ;;
+	1:--mdio-c22) mdio=c22 ;;
+	1:--mdio-c45) mdio=c45 ;;
+	*) echo 'Usage: skd840n-diag [--mdio|--mdio-c22|--mdio-c45]' >&2; exit 2 ;;
 esac
+result=0
 
 section() { printf '\n=== %s ===\n' "$1"; }
 show() {
 	section "$1"
-	if [ -r "$1" ]; then cat "$1"; else echo "not available"; fi
+	if [ -r "$1" ]; then
+		cat "$1" || result=1
+	else
+		echo 'not available (optional)'
+	fi
+}
+read_mdio() {
+	section "$1"
+	if [ ! -r "$1" ]; then
+		echo 'requested MDIO endpoint unavailable; check profile and probe log'
+		result=1
+	elif data="$(cat "$1")"; then
+		printf '%s\n' "$data"
+		case "$data" in *error=*) result=1 ;; esac
+	else
+		echo 'requested MDIO read failed'
+		result=1
+	fi
 }
 
-section 'Kernel and board'
-uname -a
+section 'Kernel and board (collector: 2026-09-18-handoff)'
+uname -a || result=1
 [ ! -r /tmp/sysinfo/model ] || cat /tmp/sysinfo/model
 show /proc/cmdline
 show /sys/devices/system/cpu/possible
 show /sys/devices/system/cpu/present
 show /sys/devices/system/cpu/online
+section 'Cache metadata (missing size fields are not fabricated)'
+cache_found=0
+for d in /sys/devices/system/cpu/cpu[0-9]*/cache/index*; do
+	[ -d "$d" ] || continue
+	cache_found=1
+	printf '%s\n' "$d"
+	for f in level type shared_cpu_list size coherency_line_size; do
+		[ ! -r "$d/$f" ] || printf '  %s=%s\n' "$f" "$(cat "$d/$f")"
+	done
+done
+[ "$cache_found" = 1 ] || echo 'no cache metadata exposed'
 show /proc/interrupts
 show /proc/iomem
 show /proc/meminfo
 show /proc/mtd
 section 'Network (BusyBox-compatible)'
-ip link show
-ip addr show
+ip link show || result=1
+ip addr show || result=1
 section 'MTD geometry and protection (no flash reads)'
 for d in /sys/class/mtd/mtd[0-9]*; do
 	[ -d "$d" ] || continue
@@ -39,12 +70,12 @@ for d in /sys/class/mtd/mtd[0-9]*; do
 	done
 done
 
-if [ "$mdio" = 1 ]; then
+if [ "$mdio" != none ]; then
 	section 'Explicit PHY-ID reads; candidates are not port assignments'
 	for d in /sys/bus/platform/devices/14f01000.mdio \
 		/sys/bus/platform/devices/14f02000.mdio; do
-		show "$d/phy_ids"
-		show "$d/phy_ids_c45"
+		case "$mdio" in both|c22) read_mdio "$d/phy_ids" ;; esac
+		case "$mdio" in both|c45) read_mdio "$d/phy_ids_c45" ;; esac
 	done
 fi
 
@@ -52,7 +83,9 @@ fi
 show /sys/kernel/debug/clk/clk_summary
 show /sys/kernel/debug/devices_deferred
 section 'Kernel messages'
-dmesg
+dmesg || result=1
 section 'Limits'
 echo 'No flash contents/configuration files read; no PHY writes or register scans.'
 echo 'Review dmesg/cmdline locally for identifying information before sharing.'
+echo 'Exit 0 means collection completed, NOT that Ethernet or every PHY works.'
+exit "$result"

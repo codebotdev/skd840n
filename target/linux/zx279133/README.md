@@ -3,24 +3,26 @@
 基于 ImmortalWrt **v25.12.2 / Linux 6.12.103**。
 
 2026-09-18 用户日志已确认此前基础 FIT 可启动并进入串口 shell。
-本轮新增独立的只读 I/O 测试 profile；**新增驱动仅通过静态/解释式检查，
+本分支提供独立的 MDIO-only 和只读 I/O 测试 profile；**新增驱动仅通过静态/解释式检查，
 尚未编译、尚未实机验证。Ethernet 四口收发及持久安装仍未实现。**
 
 | profile | 内容 |
 |---|---|
 | `skyworth_sk-d840n` | 原基础 DTS，串口/RAM 启动 |
-| `skyworth_sk-d840n-io` | 新增 MDIO PHY-ID 诊断、受限只读 SPI-NAND |
+| `skyworth_sk-d840n-mdio` | 优先测试：仅 MDIO PHY-ID 诊断，删除 SFC/NAND 节点 |
+| `skyworth_sk-d840n-io` | 独立后续测试：MDIO 诊断、受限只读 SPI-NAND |
 
-两者共用新内核配置；重新构建的基础镜像也需重新验证。
+三者共用内核配置和 cacheinfo 修复；重新构建的基础镜像也需重新验证。
 请保留目前能启动的旧 `.itb`，不要覆盖唯一可用副本。
 
 ## 文档入口
 
-[只读 I/O 构建、RAM 启动和验收](docs/IO-BRINGUP.md) 是本轮测试入口。
+[MDIO-only 构建、RAM 启动和验收](docs/MDIO-BRINGUP.md) 是当前优先测试入口。
+[只读 I/O 测试](docs/IO-BRINGUP.md) 保留为之后的 NAND 独立验证步骤。
 [研究记录](docs/RESEARCH.md) 保留全部历史反馈、根因与每轮验证限制。
 [闪存证据](docs/FLASH-EVIDENCE.md) 只包含可公开的硬件字段和校验值。
-配置种子为 [基础 profile](docs/build.config) 和 [I/O profile](docs/build-io.config)；
-两者是顶层 `.config` 的起点，不是内核配置。
+配置种子为 [基础](docs/build.config)、[MDIO-only](docs/build-mdio.config)
+和 [I/O](docs/build-io.config)；均为顶层 `.config` 的起点，不是内核配置。
 
 ## 基础 profile 的编译与启动
 
@@ -96,8 +98,10 @@ cat /sys/kernel/debug/clk/clk_summary
 该 BusyBox 不支持 `ip -br`。debugfs 已挂载时无需重复 mount。
 旧日志没有 `/proc/mtd` 是旧版关闭 MTD 的结果；现在启用核心，但基础 DTS 无 NAND 节点。
 目前仍没有 Ethernet 数据面，只有 lo 不等于硬件网口损坏。
-新镜像提供 `skd840n-diag`，`--mdio` 才触发候选 PHY ID 读取；
-MDIO 与 NAND 的具体验收、只读边界和限制见 IO-BRINGUP.md。
+新镜像提供 `skd840n-diag`，默认只采集被动信息；先分开运行 `--mdio-c22`
+和 `--mdio-c45`，兼容的 `--mdio` 选项同时读取两种 ID。
+缺少显式请求的接口、读取失败或结果含 `error=` 时退出 1，不再静默视为成功。
+本分支增加 cacheinfo 首核回退修复，不伪造缓存大小；详见 MDIO-BRINGUP.md。
 
 确认单核稳定后，再单独用基础镜像去掉临时 `maxcpus=1` 验证双核。
 当前日志没有证明双核故障，也没有证明长期稳定。
@@ -107,6 +111,7 @@ MDIO 与 NAND 的具体验收、只读边界和限制见 IO-BRINGUP.md。
 ## 本地检查
 
 ```sh
+PYTHONDONTWRITEBYTECODE=1 python3 target/linux/zx279133/tests/test_handoff.py
 PYTHONDONTWRITEBYTECODE=1 python3 target/linux/zx279133/tests/test_readonly_io.py
 sh -n target/linux/zx279133/base-files/usr/sbin/skd840n-diag
 git diff --check
