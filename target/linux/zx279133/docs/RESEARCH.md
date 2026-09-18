@@ -168,6 +168,82 @@ LMB 区间条目明确列出非零大小，不能将这两处 0 理解为“没�
 **验证：** 新增 multi_dtb_fit 覆盖回归用例；8 项 Python 测试通过，Git 空白检查通过。
 未执行本地编译或设备写入。
 
+## 2026-09-18：首次异机构建反馈，补齐 Kconfig
+
+用户报告 `make -j20` 在 `target/linux compile` 失败；`make -j1 V=s` 进入
+`SYNC include/config/auto.conf.cmd`、`Restart config...` 和 Kernel Features 问答。
+日志尚未包含 C/汇编编译诊断，因此不能将其认定为驱动编译错误。
+
+### 根因与修复
+
+上一版只核对了配置符号是否存在，遗漏了“依赖满足后，可见选项是否有明确取值”的检查。
+发行版 `include/kernel-build.mk` 为模块构建导出 `FAIL_ON_UNCONFIGURED=1`，
+通用补丁 `205-kconfig-abort-configuration-on-unset-symbol.patch` 让无终端输入时的
+未配置问答直接失败；有终端时可以看到问答。因而两个 make 命令的表现可以由同一缺项解释。
+
+Linux `scripts/kconfig/conf.c` 的 `check_conf()` 遇到缺项后会重新进入其父菜单。
+屏幕显示页大小、地址空间、CPU 数量等已有选项，不等于这些值全部丢失。
+本次保留 4 KiB 页、39 位 VA、48 位 PA、小端、NR_CPUS=2、100 Hz 等既有设置。
+
+本轮仅修改 `config-6.12`，没有改写公共构建流程或关闭未配置检查：
+
+| 配置 | 明确取值及依据 |
+|---|---|
+| UNMAP_KERNEL_AT_EL0 | y，采用 ARM64 默认 KPTI 策略，由内核运行时判断适用性 |
+| RODATA_FULL_DEFAULT_ENABLED | y，采用默认的只读映射权限策略 |
+| ARM64_TAGGED_ADDR_ABI | y，采用默认用户态 tagged-address ABI |
+| ARM64_PLATFORM_DEVICES | y，明确平台驱动菜单开关；该选项本身不添加板级驱动 |
+| COMPAT_32BIT_TIME | n，与本 target 的 64 位用户态及 COMPAT=n 一致 |
+| RPS / RFS_ACCEL / NET_FLOW_LIMIT | y，采用 SMP 网络栈默认值；不会因此产生硬件网口 |
+| FRAME_WARN | 2048，采用 64 位内核默认栈帧警告阈值 |
+| INITRAMFS_SOURCE | 空字符串作为基础值；生成 initramfs 时仍由现有流水线填入根目录 |
+| HZ_PERIODIC / TICK_CPU_ACCOUNTING | y，显式选择本次基础配置下的默认计时/记账策略 |
+| RANDSTRUCT_NONE / RANDSTRUCT_FULL | y / n，明确不随机化结构体布局 |
+| CFI_CLANG | n，明确本次 GCC bring-up 不启用 Clang CFI |
+
+### 验证与限制
+
+用发行版自己的 `scripts/kconfig.pl` 合并 generic 与 target 配置，再对已打补丁的
+Linux 6.12.103 Kconfig 源码进行解释式依赖分析。临时使用
+[Kconfiglib 14.1.0](https://github.com/ulfalizer/Kconfiglib/tree/v14.1.0)，将新版
+`modules` 声明在解析入口等价转换为其支持的 `option modules` 写法。
+
+为遵守本地不编译要求，**拦截全部 Kconfig shell 调用，没有实际执行编译器、汇编器
+或工具链能力探测**。按发行版默认 GCC 14.3.0 / binutils 2.44 建模，并分别用保守和
+宽松的能力探测返回值检查可见性；这些返回值是静态分析假设，不是实际工具链测试结果。
+修复后两组分析均未发现缺少取值的可见符号，也未发现缺少显式选择的可见 choice。
+未把模型中的编译器版本、能力位或完整生成配置写入 target。
+
+本地检查配置合并结果仍保留 UART、时钟、PSCI、GICv3，且 MTD/SPI/PCI/USB/watchdog
+保持关闭；Git 空白检查通过。**未执行 make、内核配置工具的编译或固件编译**。
+尚须用户在编译机重新执行 `make -j1 V=s target/linux/compile`，通过后再 `make -j20`。
+后续如果出现 C/汇编错误，应依据新日志继续修复，不能把此次配置修正当作编译通过。
+
+### 同次回报的 U-Boot 命令与对象头
+
+现场 `help` 确认：
+
+- `bootm` 支持 `addr#conf_uname`、`addr:subimg_uname`，并列出了分阶段子命令。
+- `tftpboot [loadAddress] [[hostIPaddr:]bootfilename]` 可指定 RAM 地址。
+- `loady [off] [baud]` 提供 YMODEM 接收。
+
+`md.b 0x82b00000 0x28` 的 40 字节按大端 FDT header 解析为：
+
+| 字段 | 值 |
+|---|---|
+| magic | `0xd00dfeed`，FDT 格式标识 |
+| totalsize | `0x2c0`，704 字节 |
+| off_dt_struct / off_dt_strings | `0x38` / `0x244` |
+| off_mem_rsvmap | `0x28` |
+| version / last_comp_version | 17 / 16 |
+| boot_cpuid_phys | 0 |
+| size_dt_strings / size_dt_struct | `0x7c` / `0x20c` |
+
+结构区和字符串区的范围与 header 一致。但尚未读取节点：FDT magic 本身不能区分
+普通 DTB 与 FIT，也不能排除 FIT 引用外部 payload。因此 704 字节不能当作整个
+multi-DTB 对象连同数据的总占用，继续保留上一轮的 32 MiB Image 上限。
+这些输出确认命令和头部信息，没有证明 TFTP/YMODEM 传输或新内核启动已成功。
+
 ### 后续每轮追加格式
 
 ```text

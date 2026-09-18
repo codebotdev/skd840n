@@ -44,6 +44,26 @@ make -j"$(nproc)" V=s > build-skd840n-v1.log 2>&1
 失败时保留完整日志，再用 `make -j1 V=s` 定位第一处错误；不要仅提供最后一行
 `Error 2`。记录 `git rev-parse HEAD`、`.config` 和各 feed 的提交 ID。
 
+### 初版编译时出现 Restart config / choice 提示
+
+f82a9c945b、ab3db8bd97 的内核配置漏了部分 ARM64 可见选项。发行版在非交互
+构建时会因这些未配置项退出；在终端中执行 `make -j1 V=s` 则可能进入问答。
+这是本 target 的配置遗漏，不需要修改编译器，也不要通过删除
+`FAIL_ON_UNCONFIGURED` 检查或持续输入 `yes` 绕过。
+
+先中止正在等待回答的 make，向编译机同步包含该修复的后续提交。
+不必覆盖已有顶层 `.config`，也不必清理工具链。在编译机的 Bash 中执行：
+
+```sh
+set -o pipefail
+make -j1 V=s target/linux/compile 2>&1 | tee build-skd840n-kernel.log
+# 仅上一条成功后继续：
+make -j20
+```
+
+修改后的 target 配置会参与重新合并。若仍失败，保留完整日志，尤其是首次错误及
+末尾约 100 行；配置问题解决并不代表后续驱动编译已通过。
+
 预期主产物在 `bin/targets/zx279133/generic/`，文件名以
 `skyworth_sk-d840n-initramfs-fit.itb` 结尾（前缀由发行版配置决定）。
 没有 factory/sysupgrade 镜像；关闭 initramfs 不会得到可安装固件。
@@ -111,7 +131,8 @@ tftpboot 0x88000000 sk-d840n-initramfs-fit.itb
 
 只有在传输成功、字节数与编译机文件一致时继续。TFTP 不可用时，如果现场
 `help loady` 确认支持，可用 `loady 0x88000000` 后通过串口工具 YMODEM 发送 FIT；
-115200 下会较慢。原厂 boot.bin 中有 loadb/loadx/loady 字符串，但实际可用性仍以现场为准。
+115200 下会较慢。2026-09-18 的现场 `help` 已确认 bootm 支持 FIT 配置选择、
+tftpboot 支持指定加载地址、loady 支持 YMODEM；尚未获得实际传输成功的日志。
 
 镜像就位后设置本次临时环境：
 
