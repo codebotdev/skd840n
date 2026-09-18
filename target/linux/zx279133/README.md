@@ -3,8 +3,9 @@
 基于 ImmortalWrt **v25.12.2 / Linux 6.12.103**。
 
 2026-09-18 用户日志已确认此前基础 FIT 可启动并进入串口 shell。
-本分支提供独立的 MDIO-only 和只读 I/O 测试 profile；**新增驱动仅通过静态/解释式检查，
-尚未编译、尚未实机验证。Ethernet 四口收发及持久安装仍未实现。**
+本分支提供独立的 MDIO-only 和只读 I/O 测试 profile。最新异机日志已生成 MDIO/SFC
+驱动目标文件，但在内核链接时遇到 MTD 块转换注册符号缺失；本轮补丁修正这一配置组合。
+**修复后的完整内核/FIT 尚未编译通过，新外设尚未实机验证；四口收发与持久安装仍未实现。**
 
 | profile | 内容 |
 |---|---|
@@ -23,6 +24,34 @@
 [闪存证据](docs/FLASH-EVIDENCE.md) 只包含可公开的硬件字段和校验值。
 配置种子为 [基础](docs/build.config)、[MDIO-only](docs/build-mdio.config)
 和 [I/O](docs/build-io.config)；均为顶层 `.config` 的起点，不是内核配置。
+
+## MTD 链接错误：register_mtd_blktrans_devs
+
+2026-09-18 的 `build-skd840n-mdio-kernel-retry.log` 已越过配置问答和驱动 C 编译。
+`undefined reference to register_mtd_blktrans_devs` 来自 generic 402 补丁无条件调用
+未编入的块转换层函数；紧随其后的 `R_AARCH64_CALL26` 是对同一未定义符号的诊断，
+不需要改变 Image 加载地址、放宽 32 MiB 上限或修改工具链。
+
+新增 target 补丁 140：当 `CONFIG_MTD_BLKDEVS` 关闭时提供空 inline hook；
+启用时保留原外部声明。不打开 MTD_BLOCK/MTD_BLOCK_RO，不改 NAND 命令白名单。
+详细来源、已验证阶段及限制见 [研究记录](docs/RESEARCH.md) 末节。
+
+在编译机同步当前分支后，保留已有 `.config` 和 feeds，在 Bash 中重试：
+
+```bash
+(
+    set -e
+    set -o pipefail
+    make target/linux/clean
+    make -j1 V=s target/linux/compile 2>&1 | tee build-skd840n-mdio-linkfix-kernel.log
+    make -j"$(nproc)" V=s 2>&1 | tee build-skd840n-mdio-linkfix.log
+)
+```
+
+新增补丁需要重新准备内核；不清理工具链、不重新复制配置种子。
+只有内核成功才继续完整构建；启动方法仍按 MDIO-BRINGUP.md，不先进行刷写。
+本轮本地仅运行 `tests/test_mtd_blktrans.py` 的 9 项静态测试和补丁应用检查，
+未运行编译器、C 预处理器、make、dtc 或固件测试。
 
 ## 基础 profile 的编译与启动
 
@@ -111,6 +140,7 @@ cat /sys/kernel/debug/clk/clk_summary
 ## 本地检查
 
 ```sh
+PYTHONDONTWRITEBYTECODE=1 python3 target/linux/zx279133/tests/test_mtd_blktrans.py
 PYTHONDONTWRITEBYTECODE=1 python3 target/linux/zx279133/tests/test_handoff.py
 PYTHONDONTWRITEBYTECODE=1 python3 target/linux/zx279133/tests/test_readonly_io.py
 sh -n target/linux/zx279133/base-files/usr/sbin/skd840n-diag

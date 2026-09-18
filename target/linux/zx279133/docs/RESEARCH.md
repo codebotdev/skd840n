@@ -498,3 +498,62 @@ Git 空白检查、已修改配置及新增测试的 SHA256 核对通过；保�
 未重跑未修改的旧 I/O、handoff 与 Image 测试，不能把它们计入本轮通过数。
 编译机保留个人 .config 和 feeds，同步后仅清理 target/linux 并重新编译；
 无需重建工具链、重新初始化 feeds 或替换 U-Boot。编译/实机结果仍待用户回传。
+
+## 2026-09-18：MDIO 重试已到链接阶段；修复关闭块转换层时的 MTD 注册符号
+
+基线：`90413cf15a3c4cf50ba2c58e8dc9cde6f6edb680`。
+输入 `build-skd840n-mdio-kernel-retry.log`，SHA256：
+`4d954f90faaabaa5528d9ab38be31dc9f770445dd7af58a7a6b3da8c59eff2e5`。
+保留原始附件，不提交含用户目录的完整日志或其他设备数据。
+
+### 新的异机证据
+
+日志不再停在 MTD_BLOCK_RO 配置问答，已完成大量 C/汇编目标编译。
+明确出现 `drivers/misc/skd840n-mdio-diag.o`、`drivers/spi/spi-skd840n-ro.o`、
+`drivers/base/cacheinfo.o` 并继续到 vmlinux.o、MODPOST 和 `.tmp_vmlinux1` 链接。
+这确认上述目标文件的异机编译进展，不代表最终内核或 FIT 构建成功，更不是外设实测。
+
+首个失败是 mtdcore.c 的 mtd_device_parse_register 对
+`register_mtd_blktrans_devs` 的 undefined reference。紧接着的 R_AARCH64_CALL26
+诊断明确针对同一 undefined symbol，不是放宽 Image 上限或改变加载地址的依据。
+
+### 根因与修改
+
+仓库 generic/hack-6.12/402-mtd-blktrans-call-add-disks-after-mtd-device.patch
+（Git blob `81927c566494ada75dfb28ce105ec4887368c9a3`）在 mtdcore 中无条件调用该函数，
+只在 mtd_blkdevs.c 中提供实现，并在 blktrans.h 中无条件声明。
+Linux 6.12.103 drivers/mtd/Makefile 仅在 CONFIG_MTD_BLKDEVS 启用时编入实现；
+本次日志没有编译 mtd_blkdevs.o，而 MTD 核心仍被编入，于是最终链接失败。
+用户没有提供完整最终 .config；不据输入配置片段声称已读取其全部有效配置。
+
+新增 target 内的 `140-mtd-blktrans-stub-when-disabled.patch`，在 generic 补丁之后
+为 CONFIG_MTD_BLKDEVS 关闭的情况提供空 static inline hook。条件使用块转换核心
+MTD_BLKDEVS，而不是仅代表某个使用者的 MTD_BLOCK 或 MTD_BLOCK_RO。
+启用情况下保留原外部声明和原注册顺序；不删除公共补丁，不关闭 MTD/SPI，
+不通过打开块设备接口绕过问题，不改 NAND 命令白名单、DTS、FIT 地址/大小或启动参数。
+该局部修复不重新设计 generic 补丁的模块加载、循环依赖或符号导出行为；
+保留 m 分支声明不能当作通用模块化 MTD 已验证。
+
+README 更新编译状态和重试步骤；来源与新文件校验见 SOURCES-mtd-link.sha256。
+旧来源校验文件和全部历史记录保持不变。
+
+### 本轮验证及限制
+
+新增 `tests/test_mtd_blktrans.py` 的 9 项标准库测试全部通过、无跳过：
+检查旧版在关闭状态下仍依赖外部符号、新版空 inline、y/m 原声明、
+不依赖单个块设备驱动开关、其他声明不变、实际 generic 调用/定义位置和原保护配置。
+条件选择用严格受限的 Python 解释器，遇到未知预处理指令直接失败；
+没有执行 C 预处理器、编译器或链接器，不能称为实际链接回归测试。
+
+另外取得完整 Linux 6.12.103 blktrans.h，按 Git blob SHA
+`6e471436bba5564c040e26b131e8a01f028e8759` 核对后，
+依次应用实际 generic 402 的头文件 hunk 与新补丁：零 fuzz、零 offset 成功。
+这覆盖完整头文件，但没有重放整个 ImmortalWrt 补丁链。
+未修改的 target 配置与 generic 402 副本也已核对 Git blob；
+Git 空白检查及新增文件 SHA256 检查通过。
+
+本轮未执行 make、defconfig、工具链能力探测、dtc、完整固件构建或实机启动。
+未重跑旧 I/O、handoff、MTD 配置或 Image 测试，不计入本轮通过数。
+下一步：编译机同步后仅 make target/linux/clean，再单线程 target/linux/compile；
+成功后才继续完整构建。保留已有 .config、feeds 和已能启动的旧 FIT，不重建工具链。
+启动仍使用 -mdio 镜像与原有临时参数，随后分开采集被动/C22/C45 日志。

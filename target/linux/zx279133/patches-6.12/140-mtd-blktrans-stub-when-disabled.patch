@@ -1,0 +1,32 @@
+From: SK-D840N contributors
+Subject: [PATCH] mtd: provide the deferred blktrans hook when block support is off
+
+The generic 402-mtd-blktrans-call-add-disks-after-mtd-device.patch adds an
+unconditional call from mtdcore to register_mtd_blktrans_devs(). Its
+implementation is in mtd_blkdevs.o, built only with CONFIG_MTD_BLKDEVS.
+SK-D840N intentionally disables both MTD_BLOCK and MTD_BLOCK_RO, so a
+character-device-only MTD build otherwise fails at the vmlinux link.
+
+Provide an empty inline hook when the translation layer is disabled. Use
+MTD_BLKDEVS, not one of its individual users, and keep the existing external
+hook for enabled configurations. No block interface or flash write path is
+enabled by this target-local follow-up to the generic patch. This does not
+redesign the generic patch's module loading or symbol export behavior.
+
+--- a/include/linux/mtd/blktrans.h
++++ b/include/linux/mtd/blktrans.h
+@@ -76,7 +76,14 @@ extern int deregister_mtd_blktrans(struct mtd_blktrans_ops *tr);
+ extern int add_mtd_blktrans_dev(struct mtd_blktrans_dev *dev);
+ extern int del_mtd_blktrans_dev(struct mtd_blktrans_dev *dev);
+ extern int mtd_blktrans_cease_background(struct mtd_blktrans_dev *dev);
++
++#if IS_ENABLED(CONFIG_MTD_BLKDEVS)
+ extern void register_mtd_blktrans_devs(void);
++#else
++static inline void register_mtd_blktrans_devs(void)
++{
++}
++#endif
+ 
+ /**
+  * module_mtd_blktrans() - Helper macro for registering a mtd blktrans driver

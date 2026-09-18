@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# From target/linux/zx279133: sha256sum -c docs/SOURCES-mtd-link.sha256
+# Fixed inputs, Git blob SHA-1 (not SHA256):
+# codebotdev/skd840n commit 90413cf15a3c4cf50ba2c58e8dc9cde6f6edb680
+# target/linux/generic/hack-6.12/402-mtd-blktrans-call-add-disks-after-mtd-device.patch:
+#   81927c566494ada75dfb28ce105ec4887368c9a3
+# gregkh/linux v6.12.103 include/linux/mtd/blktrans.h:
+#   6e471436bba5564c040e26b131e8a01f028e8759
+# gregkh/linux v6.12.103 drivers/mtd/Makefile:
+#   593d0593a038af328085c9fc4efd5fb37558454d
+# Full original header and generic patch were verified against these blob IDs.
+# Local additions, SHA256:
+fedd7ae62f98715314c1996c8e03e935c1415fd687ff111827285b020a948b8c  patches-6.12/140-mtd-blktrans-stub-when-disabled.patch
+b2a5e175559ccd057d891e7f9e3aad0639d7592852b80470fec9bead7dca66af  tests/test_mtd_blktrans.py
