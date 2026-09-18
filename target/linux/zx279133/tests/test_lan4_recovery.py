@@ -249,8 +249,11 @@ class ShellTests(unittest.TestCase):
         self.temp=tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
         self.d=Path(self.temp.name); self.state=self.d/'state'; self.calls=self.d/'calls'
         self.state.write_text('version=lan4-direct-recovery-v1 interface=lan4test stage=registered-down running=0 error=0 link_error=0\nattempted=0 dma_retained=0 carrier=0 packet_limit=512\n')
+        self.stats=self.d/'statistics'; self.stats.mkdir()
+        for key in ('rx_packets','rx_bytes','rx_errors','rx_dropped','tx_packets','tx_bytes','tx_errors','tx_dropped'):
+            (self.stats/key).write_text('0\n')
         self.script=self.d/'helper'
-        self.script.write_text((ROOT/'base-files/usr/sbin/skd840n-lan4-test').read_text().replace('/sys/class/net/lan4test/device/test_state',str(self.state)))
+        self.script.write_text((ROOT/'base-files/usr/sbin/skd840n-lan4-test').read_text().replace('/sys/class/net/lan4test/device/test_state',str(self.state)).replace('/sys/class/net/lan4test/statistics',str(self.stats)))
         (self.d/'id').write_text('#!/bin/sh\necho "${FAKE_UID:-0}"\n')
         (self.d/'ip').write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "$CALLS"\ncase "$*" in "link set dev lan4test up") exit "${UP_RC:-0}" ;; esac\nexit 0\n')
         for n in ('id','ip'): (self.d/n).chmod(0o755)

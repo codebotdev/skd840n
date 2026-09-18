@@ -1,19 +1,58 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-2.0-only
 # Explicit RAM-only experiment; no flash, UCI or boot environment writes.
+# status is passive. A successful report is NOT proof of packet delivery.
 usage() { echo 'Usage: skd840n-lan4-test start|status|stop'; }
 [ "$#" -eq 1 ] || { usage >&2; exit 2; }
 case "$1" in start|status|stop) ;; --help) usage; exit 0 ;; *) usage >&2; exit 2 ;; esac
 state=/sys/class/net/lan4test/device/test_state
+stats=/sys/class/net/lan4test/statistics
 [ -r "$state" ] || { echo 'Missing LAN4 test driver; boot the -lan4 FIT.' >&2; exit 1; }
-if ! current="$(cat "$state")"; then
-	echo 'Cannot read test state.' >&2
-	exit 1
-fi
-printf '%s\n' "$current" | grep -q '^version=lan4-direct-recovery-v1 interface=lan4test ' || {
-	echo 'Unexpected driver version; refusing activation.' >&2
-	exit 1
+
+read_state() {
+	if ! current="$(cat "$state")"; then
+		echo 'Cannot read test state.' >&2
+		return 1
+	fi
+	printf '%s\n' "$current" | grep -q '^version=lan4-direct-recovery-v1 interface=lan4test ' || {
+		echo 'Unexpected driver version; refusing operation.' >&2
+		return 1
+	}
 }
+
+report() {
+	read_state || return 1
+	printf '%s\n' "$current"
+	report_rc=0
+	printf '%s\n' "$current" | grep -Eq ' error=0([[:space:]]|$)' || report_rc=1
+	printf '\n--- software interface counters (sequential samples) ---\n'
+	# The tested BusyBox ip has no -s option. Use the stable sysfs ABI;
+	# keep missing/bad counters visible, and still collect the other sections.
+	for key in rx_packets rx_bytes rx_errors rx_dropped tx_packets tx_bytes tx_errors tx_dropped; do
+		if ! value="$(cat "$stats/$key")"; then
+			printf '%s=unavailable\n' "$key"
+			report_rc=1
+			continue
+		fi
+		case "$value" in ''|*[!0-9]*)
+			printf '%s=invalid\n' "$key"
+			report_rc=1 ;;
+		*) printf '%s=%s\n' "$key" "$value" ;;
+		esac
+	done
+	printf '\n--- link ---\n'
+	ip link show dev lan4test || report_rc=1
+	printf '\n--- IPv4 address ---\n'
+	ip -f inet addr show dev lan4test || report_rc=1
+	printf '\n--- routes ---\n'
+	ip -f inet route list dev lan4test || report_rc=1
+	printf '\n--- neighbours ---\n'
+	ip neigh show dev lan4test || report_rc=1
+	printf '\nreport_rc=%s (collection/driver status, not connectivity)\n' "$report_rc"
+	return "$report_rc"
+}
+
+read_state || exit 1
 case "$1" in
 	start)
 		[ "$(id -u)" = 0 ] || { echo 'Root is required.' >&2; exit 1; }
@@ -21,13 +60,21 @@ case "$1" in
 			echo 'Already activated this boot. Power-cycle before another activation.' >&2
 			exit 1 ;;
 		esac
+		# Check address-query support before the one-shot hardware activation.
+		if ! addresses="$(ip -f inet addr show dev lan4test)"; then
+			echo 'Cannot inspect IPv4 address; hardware activation not attempted.' >&2
+			exit 1
+		fi
 		if ! ip link set dev lan4test up; then
 			cat "$state"
 			echo 'Activation failed. Save dmesg and test state; do not retry in this boot.' >&2
 			exit 1
 		fi
-		if ! ip -4 addr show dev lan4test | grep -q 'inet 192.168.1.1/24 '; then
-			ip addr add 192.168.1.1/24 dev lan4test || exit 1
+		if ! printf '%s\n' "$addresses" | grep -q 'inet 192.168.1.1/24 '; then
+			ip addr add 192.168.1.1/24 dev lan4test || {
+				echo 'Address assignment failed after activation; do not repeat start.' >&2
+				exit 1
+			}
 		fi
 		echo 'Armed with 192.168.1.1/24. This is NOT proof of link or packet delivery.'
 		;;
@@ -36,9 +83,5 @@ case "$1" in
 		echo 'Software stopped; DMA memory retained. Cold power-cycle before another test.'
 		;;
 esac
-cat "$state" || exit 1
-ip -s link show dev lan4test || exit 1
-ip addr show dev lan4test || exit 1
-if grep -q ' error=-' "$state"; then
-	exit 1
-fi
+report
+exit "$?"

@@ -2,8 +2,10 @@
 
 ## Read this first
 
-This is an integrated **untested hardware experiment**, not a known-working
-four-port firmware. It registers `lan4test` DOWN and starts only through an
+This is an integrated **partially tested hardware experiment**, not a known-working
+four-port firmware. The first user boot/activation reaches direct-ready and
+reports PHY0d 1000/full. TX completed=13, RX consumed=0, and ARP/ping fail; wire
+transmission is not established. See the latest RESEARCH.md entry. It registers `lan4test` DOWN and starts only through an
 explicit `skd840n-lan4-test start` or `ip link set dev lan4test up`.
 This revision uses CPU-direct/PPU-bypass operation and **no microcode**. Do not
 follow the previous response's `lan4` name or microcode installation instruction.
@@ -12,9 +14,10 @@ versioned replacement, with fresh tests and provenance.
 
 The new C files are included in Kbuild through CONFIG_SKD840N_LAN4_TEST=y.
 The new DTS alone instantiates them. The existing basic, MDIO-only and I/O
-profiles do not start this hardware path. This integration itself has not been
-compiled, booted or tested for Ethernet traffic. The prior RX component's
-successful external build does not validate the new parent, TX or startup.
+profiles do not start this hardware path. The first integrated FIT has boot
+and activation evidence, but not successful Ethernet traffic. The serial log
+has no exact Git revision, full build log or whole-FIT SHA256; it does not
+validate every build input or prove the entire hardware recipe correct.
 
 ## Evidence and remaining assumptions
 
@@ -65,10 +68,11 @@ IOMMU sandbox or protection against every stale/incorrect hardware write.
 
 ## Build in the existing full checkout
 
-Apply the recovery patch to baseline 1ef3686aaeef3717bb8f8823aca002fba352409d;
-the connector blocked completion of the GitHub upload, so the remote recovery
-branch alone does not contain this code. Preserve the proven MDIO-only ITB and
-all previous build inputs. After applying, run in Bash from the repository root:
+The recovery integration is published at 149bf05550dea8e8d1c0a7c74dfe704dcb1ef582
+on skd840n/lan4-recovery-20260918. Synchronize that branch while preserving
+local changes; do not apply the full recovery patch a second time. Preserve
+the proven ITB and previous build inputs. The helper-only update needs no
+kernel rebuild. For future kernel changes, use Bash from the repository root:
 
 ```bash
 (
@@ -151,7 +155,7 @@ until negotiation; lack of carrier is not fixed by repeating activation.
 With peer 192.168.1.101/24, run a small bidirectional test:
 
 ```sh
-ping -c 5 192.168.1.101
+ping -I lan4test -c 3 -W 2 -w 10 192.168.1.101
 ip neigh show dev lan4test
 skd840n-lan4-test status
 dmesg
@@ -166,12 +170,58 @@ exhaustion: save logs, do not run repeated up/down, cold power-cycle.
 `skd840n-lan4-test stop` stops software and known ingress paths, retaining DMA
 memory. It is NOT an assertion of full hardware stop or permission to warm boot.
 
+## First zero-RX session: collect without rebuilding or reactivating
+
+The old helper prints test_state and then aborts on unsupported ip -s. This
+reporting defect does not cause the ARP failure. The revised helper uses
+/sys/class/net/lan4test/statistics and only the BusyBox ip argument forms
+available in the tested command family. It preserves failures and prints link,
+IPv4 address, routes and neighbours. status is passive; rc=0 is not ping success.
+
+For an already activated recovery-v1 image, these commands need no new helper,
+package install or restart. First start capture on the peer's actual physical
+LAN4-connected interface, filtering ARP and ICMP. Capture in the host OS owning
+that NIC, not merely a VM/WSL virtual adapter. Keep the peer at 192.168.1.101/24.
+Then, in the device's serial shell, run once:
+
+```sh
+echo 'CASE before-peer-capture'
+cat /sys/class/net/lan4test/device/test_state
+cat /proc/net/dev
+ip addr show dev lan4test
+ip route list
+ip neigh show dev lan4test
+ping -I lan4test -c 3 -W 2 -w 10 192.168.1.101
+echo "ping_rc=$?"
+echo 'CASE after-peer-capture'
+cat /sys/class/net/lan4test/device/test_state
+cat /proc/net/dev
+ip neigh show dev lan4test
+```
+
+Use this only while running=1/error=0, not after a stop/fault. Do not issue
+another start or up/down sequence. Also send one three-request ping from the
+peer to 192.168.1.1 while capturing, then read device test_state once more.
+
+No device ARP observed on the peer leaves TX/wiring/capture-point possibilities
+open. Device ARP seen, followed by a peer reply actually transmitted while RX
+stays zero, narrows the receiving-path investigation. Seeing an outgoing packet
+in the peer's capture is not itself proof of arrival at the device. Do not
+bypass ARP with a permanent neighbour or report TX completion as wire success.
+Avoid flood tests because the 512-frame quota remains active.
+
+Interface statistics ABI and TX-counter limits:
+https://docs.kernel.org/6.12/networking/statistics.html
+BusyBox ping interface/deadline options:
+https://busybox.net/BusyBox.html
+
 ## Offline checks
 
 ```sh
 PYTHONDONTWRITEBYTECODE=1 python3 target/linux/zx279133/tests/test_lan4_recovery.py
 PYTHONDONTWRITEBYTECODE=1 python3 target/linux/zx279133/tests/test_idm_core.py
 PYTHONDONTWRITEBYTECODE=1 python3 target/linux/zx279133/tests/test_idm_rx.py
+PYTHONDONTWRITEBYTECODE=1 python3 target/linux/zx279133/tests/test_lan4_helper.py
 sh -n target/linux/zx279133/base-files/usr/sbin/skd840n-lan4-test
 ```
 

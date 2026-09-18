@@ -3,12 +3,16 @@
 The current integrated experiment is documented in [LAN4-TEST.md](docs/LAN4-TEST.md).
 Its interface is **lan4test**, its helper is **skd840n-lan4-test**, and it does
 **not load microcode**. It is not the full normal NP/SE/PPU Ethernet driver.
-No successful build, RAM boot, packet reception or ping is claimed for this
-integrated revision. The earlier RX component has external build evidence only.
+The 2026-09-18 user log now boots this integration, registers lan4test and
+activates it with a reported 1000/full PHY link. TX completion is 13, but RX is
+zero and ARP/ping fail. This is NOT working packet-delivery evidence.
+See the latest [research entry](docs/RESEARCH.md) for scope and input hash.
 
-Delivery status: the connector blocked completion of the GitHub upload. The
-remote recovery branch still points to the old baseline; use the supplied patch
-kit, not a branch-only checkout, for this revision.
+The integration is now published on skd840n/lan4-recovery-20260918, starting
+with commit 149bf05550dea8e8d1c0a7c74dfe704dcb1ef582. Do not reapply the full
+recovery patch to that commit. The follow-up helper fix needs no kernel rebuild:
+it replaces unsupported BusyBox ip -s with sysfs counters and collects routes
+and neighbours even if one report section fails.
 
 This recovery replaces previously announced download links whose files did not
 exist. The prior claims of a microcode-containing kit, interface `lan4`, and
@@ -23,8 +27,9 @@ only the new `skyworth_sk-d840n-lan4` DTS instantiates this driver.
 ## Build host (not the device)
 
 Preserve the known-good ITB, existing .config, feeds and toolchain. Synchronize
-the baseline and apply the supplied recovery patch, then run from the complete
-source root in Bash:
+the published recovery branch while preserving local changes. Do not rebuild
+solely for the helper fix. When testing future kernel changes, run from the
+complete source root in Bash:
 
 ```bash
 (
@@ -54,7 +59,7 @@ until explicit activation. No NAND or persistent environment writes are needed.
 skd840n-lan4-test status
 skd840n-lan4-test start
 # Continue only when activation succeeds and error=0.
-ping -c 5 192.168.1.101
+ping -I lan4test -c 3 -W 2 -w 10 192.168.1.101
 skd840n-lan4-test status
 dmesg
 ```
