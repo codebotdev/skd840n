@@ -12,8 +12,11 @@
 # MDIO protocol provenance retained in SOURCES-io.sha256.
 # The historical research archive retains blob faf0fb8a91545a90bcaf6f9c0e5d8e70451d7bf6.
 1e9e64319a23adf5495f66794d932e6e9c4b7e1216b5ef4abf4378a007549cd1  files-6.12/drivers/misc/skd840n-mdio-diag.c
-42930260d9c040b2d9bdb0275e2e7656f435d7b513533050b00bb21a02def2fe  base-files/usr/sbin/skd840n-port-map
+0584b3f83bd42db50fcb73fdf69cbc8f5ac46c7cd2b2d74001baf3e4dbda23f0  base-files/usr/sbin/skd840n-port-map
 9bf8ae6102627a8ba8315eff546ff71e2155a5644752f4bf06615cdd3211c70e  tests/test_phy_link.py
-4c47c465fa52e5eaec57f42dc27a4e7107581042d00cdb6664565c44e1d07e8c  docs/PORT-MAPPING.md
-fc89a64c8fe45b31b9c969ee1924c92acc570ec7f856828fd09134cc05601b60  docs/RESEARCH.md
-615f8d44c03c616953d55bf7898f34f9584986c7866a0928956b8044a527642f  README.md
+9f35b9e2ac3f6ccb3d43d148949c69b7df184612b9ea470727fcbff2fce38370  docs/PORT-MAPPING.md
+11eaf239db231ad41ba329997c36cd3c66b529ade6747595f36fe0c8661aed94  docs/RESEARCH.md
+bb4ada3b509b199a27379cacc137b7edff97119e93789b3da4be49c486e906da  README.md
+# User-labeled physical-port evidence; no runtime board configuration.
+e60c8aab9d35dd8c48a59e1e1646dd5db74151311141d3532abdacac0fecb92d  docs/port-map-20260918.json
+c53c82a80dd6598a6f6bc3f731c0a66fbddf8daff4f6b4684773b0c7272d6e9f  tests/test_port_labels.py

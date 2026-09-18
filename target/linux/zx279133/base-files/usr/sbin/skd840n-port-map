@@ -2,13 +2,27 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # Explicit one-shot PHY link read. No configuration, flash, or vendor writes.
 
-usage() { echo 'Usage: skd840n-port-map --c22|--c45'; }
-case "$#:$1" in
-	1:--c22) attr=phy_links ;;
-	1:--c45) attr=phy_links_c45 ;;
+usage() { echo 'Usage: skd840n-port-map --c22|--c45 [--label LABEL]'; }
+case "$#:${1-}" in
+	1:--c22|3:--c22) attr=phy_links ;;
+	1:--c45|3:--c45) attr=phy_links_c45 ;;
 	1:--help) usage; exit 0 ;;
 	*) usage >&2; exit 2 ;;
 esac
+
+# LABEL annotates the log only: it never selects a PHY, path, or netdev.
+if [ "$#" = 3 ]; then
+	[ "$2" = --label ] || { usage >&2; exit 2; }
+	LC_ALL=C
+	export LC_ALL
+	case "$3" in
+		''|[!A-Za-z0-9]*|*[!A-Za-z0-9_.-]*)
+			echo 'error=invalid-label (1..48 ASCII letters/digits/._-, start alphanumeric)' >&2
+			exit 2 ;;
+	esac
+	[ "${#3}" -le 48 ] || { echo 'error=label-too-long' >&2; exit 2; }
+	printf 'CASE %s\n' "$3"
+fi
 
 status=0
 base=/sys/bus/platform/devices

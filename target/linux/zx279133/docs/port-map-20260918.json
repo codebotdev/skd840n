@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "scope": "One user-labeled SK-D840N test session; documentation only, not runtime configuration",
+  "source_log_sha256": "f67d653d49eee5850c9ff7eb0c8660b2e2abafbcef8f9a73ad99dbc970d51117",
+  "source_log_bytes": 148360,
+  "source_firmware_git_commit": null,
+  "complete_fit_sha256": null,
+  "ports": [
+    {
+      "label": "lan1",
+      "user_rate_label": "2.5g",
+      "mdio_mmio": "14f02000",
+      "phy_addr_hex": "05",
+      "phy_id": "001cc849",
+      "mac_index": null,
+      "serdes_mode": null,
+      "negotiated_speed_mbps": null
+    },
+    {
+      "label": "lan2",
+      "user_rate_label": "1g",
+      "mdio_mmio": "14f01000",
+      "phy_addr_hex": "0b",
+      "phy_id": "84b95032",
+      "mac_index": null,
+      "serdes_mode": null,
+      "negotiated_speed_mbps": null
+    },
+    {
+      "label": "lan3",
+      "user_rate_label": "1g",
+      "mdio_mmio": "14f01000",
+      "phy_addr_hex": "0c",
+      "phy_id": "84b95032",
+      "mac_index": null,
+      "serdes_mode": null,
+      "negotiated_speed_mbps": null
+    },
+    {
+      "label": "lan4",
+      "user_rate_label": "1g",
+      "mdio_mmio": "14f01000",
+      "phy_addr_hex": "0d",
+      "phy_id": "84b95032",
+      "mac_index": null,
+      "serdes_mode": null,
+      "negotiated_speed_mbps": null
+    }
+  ],
+  "c22_column_order": [
+    "14f01000:0a",
+    "14f01000:0b",
+    "14f01000:0c",
+    "14f01000:0d",
+    "14f02000:05"
+  ],
+  "c22_stat_now": {
+    "all-unplugged": [
+      "7949",
+      "7949",
+      "7949",
+      "7949",
+      "7989"
+    ],
+    "lan1": [
+      "7949",
+      "7949",
+      "7949",
+      "7949",
+      "79ad"
+    ],
+    "lan2": [
+      "7949",
+      "796d",
+      "7949",
+      "7949",
+      "7989"
+    ],
+    "lan3": [
+      "7949",
+      "7949",
+      "796d",
+      "7949",
+      "7989"
+    ],
+    "lan4": [
+      "7949",
+      "7949",
+      "7949",
+      "796d",
+      "7989"
+    ]
+  },
+  "lan1_c45": {
+    "mdio_mmio": "14f02000",
+    "phy_addr_hex": "05",
+    "phy_id": "001cc849",
+    "pma_stat_first": "0002",
+    "pma_stat_now": "0006",
+    "pcs_stat_first": "0582",
+    "pcs_stat_now": "0582",
+    "cause_of_difference": null
+  },
+  "unmapped_responders": [
+    {
+      "mdio_mmio": "14f01000",
+      "phy_addr_hex": "0a",
+      "phy_id": "84b95032",
+      "observation": "down in all five snapshots; role unknown, not proven absent"
+    }
+  ],
+  "limitations": [
+    "one snapshot per label, not repeated unplug/replug validation",
+    "no MAC/SerDes mapping, DMA traffic, negotiated rate or routing validation"
+  ]
+}

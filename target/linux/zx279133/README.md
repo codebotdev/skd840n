@@ -2,11 +2,12 @@
 
 基于 ImmortalWrt **v25.12.2 / Linux 6.12.103**。
 
-2026-09-18 新实机日志确认 MDIO-only FIT 已进入 shell，CPU0 缓存目录可见，
-两条 MDIO 总线读到有效 C22 ID，第二条总线也读到匹配的 C45 ID。
-这不等于四口 Ethernet 收发已实现；NAND、双核和长期稳定性仍未验证。
-本轮新增显式只读链路快照，用逐口插拔确认 PHY 地址与物理插座的关系。
-**新增链路采集代码仅完成本地静态/解释式测试，尚未编译或实机验证。**
+2026-09-18 的 063327 实机日志已验证只读链路快照，并按用户 lan1..lan4 标记
+建立本机 PHY 映射：lan1=14f02000:05，lan2/3/4=14f01000:0b/0c/0d（地址十六进制）。
+14f01000:0a 保持未映射；lan1 的 C22/PMA up 与 PCS down 差异保留，不猜测原因。
+**四口 PHY 对应不等于四口 Ethernet 收发；MAC/SerDes 与 DMA 数据面仍未实现。**
+本轮只记录证据并给用户态采集工具增加可选标签，不改内核、DTS、配置或 FIT。
+当前可启动镜像可以保留使用，不需要为确认此次映射重新编译。
 
 | profile | 内容 |
 |---|---|
@@ -19,7 +20,7 @@
 
 ## 文档入口
 
-[PHY 实测结果与逐口链路映射](docs/PORT-MAPPING.md) 是当前测试入口。
+[PHY 实测结果与逐口链路映射](docs/PORT-MAPPING.md) 包含最新四口对应、PCS 差异及标签用法。
 [MDIO-only 构建、RAM 启动和验收](docs/MDIO-BRINGUP.md) 保留初始 ID 诊断步骤；
 其中早期“未编译/未启动”的状态由本次新实机记录更新。
 [只读 I/O 测试](docs/IO-BRINGUP.md) 保留为之后的 NAND 独立验证步骤。
@@ -53,7 +54,7 @@
 
 新增补丁需要重新准备内核；不清理工具链、不重新复制配置种子。
 只有内核成功才继续完整构建；启动方法仍按 MDIO-BRINGUP.md，不先进行刷写。
-本轮本地仅运行 `tests/test_mtd_blktrans.py` 的 9 项静态测试和补丁应用检查，
+该历史修复当时仅运行 `tests/test_mtd_blktrans.py` 的 9 项静态测试和补丁应用检查，
 未运行编译器、C 预处理器、make、dtc 或固件测试。
 
 ## 基础 profile 的编译与启动
@@ -143,6 +144,7 @@ cat /sys/kernel/debug/clk/clk_summary
 ## 本地检查
 
 ```sh
+PYTHONDONTWRITEBYTECODE=1 python3 target/linux/zx279133/tests/test_port_labels.py
 PYTHONDONTWRITEBYTECODE=1 python3 target/linux/zx279133/tests/test_phy_link.py
 PYTHONDONTWRITEBYTECODE=1 python3 target/linux/zx279133/tests/test_mtd_blktrans.py
 PYTHONDONTWRITEBYTECODE=1 python3 target/linux/zx279133/tests/test_handoff.py
