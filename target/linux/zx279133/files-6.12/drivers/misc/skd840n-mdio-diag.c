@@ -5,17 +5,21 @@
  * 07f8687248578d4be6931c665ff5d08bb6cc3d9d. See docs/SOURCES-io.sha256.
  *
  * No PHY writes, PHY resets, automatic enumeration or probe-time transactions.
- * The sysfs files read only IDs at the stock DT's uni-phy candidates.
+ * ID reads cover the stock DT candidates; link reads require witnessed IDs.
+ * Reading status registers consumes latched-low link indications.
  * Clause 45 address cycles select a register; they do not write its value.
  */
 
 #include <linux/bitfield.h>
 #include <linux/clk.h>
 #include <linux/device.h>
+#include <linux/errno.h>
 #include <linux/io.h>
 #include <linux/iopoll.h>
 #include <linux/kernel.h>
 #include <linux/limits.h>
+#include <linux/mdio.h>
+#include <linux/mii.h>
 #include <linux/mod_devicetable.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
@@ -62,11 +66,16 @@ static int skd840n_mdio_transfer(struct skd840n_mdio *mdio, u32 control)
 }
 
 /* Caller holds lock across both halves of a Clause 45 transaction. */
-static int skd840n_mdio_read_id(struct skd840n_mdio *mdio, u8 phy,
+static int skd840n_mdio_read_reg(struct skd840n_mdio *mdio, u8 phy,
 			       int mmd, u8 reg)
 {
 	u32 control = FIELD_PREP(ZX_MDIO_PHY, phy);
 	int ret;
+
+	/* No vendor/page registers or C45-over-C22 data writes. */
+	if (phy > 31 || reg > MII_PHYSID2 ||
+	    (mmd != -1 && mmd != MDIO_MMD_PMAPMD && mmd != MDIO_MMD_PCS))
+		return -EINVAL;
 
 	if (mmd < 0) {
 		control |= ZX_MDIO_C22 | FIELD_PREP(ZX_MDIO_REG, reg) |
@@ -101,10 +110,10 @@ static ssize_t skd840n_mdio_ids(struct device *dev, char *buf, bool c45)
 		for (j = 0; j < (c45 ? 2 : 1); j++) {
 			/* Standard PMA/PMD and PCS IDs, never vendor registers. */
 			mmd = c45 ? (j ? 3 : 1) : -1;
-			hi = skd840n_mdio_read_id(mdio, skd840n_phy_candidates[i],
+			hi = skd840n_mdio_read_reg(mdio, skd840n_phy_candidates[i],
 						 mmd, 2);
 			lo = hi < 0 ? hi :
-				skd840n_mdio_read_id(mdio,
+				skd840n_mdio_read_reg(mdio,
 					skd840n_phy_candidates[i], mmd, 3);
 			if (hi < 0 || lo < 0) {
 				len += sysfs_emit_at(buf, len,
@@ -137,9 +146,132 @@ static ssize_t phy_ids_c45_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(phy_ids_c45);
 
+/* IDs witnessed on this board; this is not a physical-port assignment. */
+static bool skd840n_mdio_link_id(u32 id, int mmd)
+{
+	if (mmd == -1)
+		return id == 0x84b95032 || id == 0x001cc849;
+	return (mmd == MDIO_MMD_PMAPMD || mmd == MDIO_MMD_PCS) &&
+	       id == 0x001cc849;
+}
+
+static int skd840n_mdio_get_id(struct skd840n_mdio *mdio, u8 phy,
+			     int mmd, u32 *id)
+{
+	int hi, lo;
+
+	hi = skd840n_mdio_read_reg(mdio, phy, mmd, MII_PHYSID1);
+	if (hi < 0)
+		return hi;
+	lo = skd840n_mdio_read_reg(mdio, phy, mmd, MII_PHYSID2);
+	if (lo < 0)
+		return lo;
+	*id = (u32)hi << 16 | lo;
+	return 0;
+}
+
+/* Caller holds the bus lock. Preserve both latch and current observations. */
+static int skd840n_mdio_sample_link(struct skd840n_mdio *mdio, u8 phy,
+				    int mmd, u32 id, int *ctrl,
+				    int *first, int *now)
+{
+	u32 after;
+	int ret;
+
+	if (!skd840n_mdio_link_id(id, mmd))
+		return -EOPNOTSUPP;
+
+	*ctrl = skd840n_mdio_read_reg(mdio, phy, mmd, MII_BMCR);
+	if (*ctrl < 0)
+		return *ctrl;
+	*first = skd840n_mdio_read_reg(mdio, phy, mmd, MII_BMSR);
+	if (*first < 0)
+		return *first;
+	*now = skd840n_mdio_read_reg(mdio, phy, mmd, MII_BMSR);
+	if (*now < 0)
+		return *now;
+
+	/* An all-ones bus response must never be reported as link-up. */
+	if (*ctrl == 0xffff || *first == 0xffff || *now == 0xffff)
+		return -ENODATA;
+	ret = skd840n_mdio_get_id(mdio, phy, mmd, &after);
+	if (ret)
+		return ret;
+	if (after != id)
+		return -ESTALE;
+
+	/* Both C22 BMSR and C45 STAT1 use bit 2. No speed inference. */
+	return !!(*now & BMSR_LSTATUS);
+}
+
+static ssize_t skd840n_mdio_links(struct device *dev, char *buf, bool c45)
+{
+	struct skd840n_mdio *mdio = dev_get_drvdata(dev);
+	ssize_t len = 0;
+	unsigned int i, j;
+	int ret, mmd, ctrl, first, now;
+	u32 id;
+	u8 phy;
+
+	mutex_lock(&mdio->lock);
+	len += sysfs_emit_at(buf, len,
+		"candidate clause mmd phy_id ctrl stat_first stat_now link result\n");
+	for (i = 0; i < ARRAY_SIZE(skd840n_phy_candidates); i++) {
+		phy = skd840n_phy_candidates[i];
+		for (j = 0; j < (c45 ? 2 : 1); j++) {
+			mmd = c45 ? (j ? MDIO_MMD_PCS : MDIO_MMD_PMAPMD) : -1;
+			ret = skd840n_mdio_get_id(mdio, phy, mmd, &id);
+			if (ret) {
+				len += sysfs_emit_at(buf, len,
+					"%02x %u %d -------- ---- ---- ---- unknown error=%d\n",
+					phy, c45 ? 45 : 22, mmd, ret);
+				continue;
+			}
+			if (!id || id == U32_MAX || !skd840n_mdio_link_id(id, mmd)) {
+				len += sysfs_emit_at(buf, len,
+					"%02x %u %d %08x ---- ---- ---- unknown %s\n",
+					phy, c45 ? 45 : 22, mmd, id,
+					!id || id == U32_MAX ? "no-id" : "unsupported-id");
+				continue;
+			}
+			ctrl = first = now = -1;
+			ret = skd840n_mdio_sample_link(mdio, phy, mmd, id,
+						      &ctrl, &first, &now);
+			if (ret < 0) {
+				len += sysfs_emit_at(buf, len,
+					"%02x %u %d %08x ---- ---- ---- unknown error=%d\n",
+					phy, c45 ? 45 : 22, mmd, id, ret);
+				continue;
+			}
+			len += sysfs_emit_at(buf, len,
+				"%02x %u %d %08x %04x %04x %04x %s ok\n",
+				phy, c45 ? 45 : 22, mmd, id, ctrl, first, now,
+				ret ? "up" : "down");
+		}
+	}
+	mutex_unlock(&mdio->lock);
+	return len;
+}
+
+static ssize_t phy_links_show(struct device *dev,
+			      struct device_attribute *attr, char *buf)
+{
+	return skd840n_mdio_links(dev, buf, false);
+}
+static DEVICE_ATTR_RO(phy_links);
+
+static ssize_t phy_links_c45_show(struct device *dev,
+				  struct device_attribute *attr, char *buf)
+{
+	return skd840n_mdio_links(dev, buf, true);
+}
+static DEVICE_ATTR_RO(phy_links_c45);
+
 static struct attribute *skd840n_mdio_attrs[] = {
 	&dev_attr_phy_ids.attr,
 	&dev_attr_phy_ids_c45.attr,
+	&dev_attr_phy_links.attr,
+	&dev_attr_phy_links_c45.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(skd840n_mdio);

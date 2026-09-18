@@ -1,0 +1,41 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+# Explicit one-shot PHY link read. No configuration, flash, or vendor writes.
+
+usage() { echo 'Usage: skd840n-port-map --c22|--c45'; }
+case "$#:$1" in
+	1:--c22) attr=phy_links ;;
+	1:--c45) attr=phy_links_c45 ;;
+	1:--help) usage; exit 0 ;;
+	*) usage >&2; exit 2 ;;
+esac
+
+status=0
+base=/sys/bus/platform/devices
+printf 'SK-D840N link snapshot v1; mode=%s\n' "$1"
+printf '%s\n' 'link is a PHY status bit, NOT MAC/DMA traffic or a port assignment.'
+for name in 14f01000.mdio 14f02000.mdio; do
+	path="$base/$name/$attr"
+	printf '\n=== %s ===\n' "$name/$attr"
+	if [ ! -r "$path" ]; then
+		echo 'error=missing-interface (requires a link-snapshot kernel)' >&2
+		status=1
+		continue
+	fi
+	if ! table="$(cat "$path")"; then
+		echo 'error=read-failed' >&2
+		status=1
+		continue
+	fi
+	printf '%s\n' "$table"
+	if ! printf '%s\n' "$table" | grep -q '^candidate clause mmd phy_id ctrl stat_first stat_now link result$'; then
+		echo 'error=invalid-table' >&2
+		status=1
+	fi
+	if ! printf '%s\n' "$table" | grep -q '^[0-9a-f][0-9a-f] '; then
+		echo 'error=missing-rows' >&2
+		status=1
+	fi
+	case "$table" in *error=*|*unsupported-id*) status=1 ;; esac
+done
+exit "$status"

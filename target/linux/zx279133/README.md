@@ -2,10 +2,11 @@
 
 基于 ImmortalWrt **v25.12.2 / Linux 6.12.103**。
 
-2026-09-18 用户日志已确认此前基础 FIT 可启动并进入串口 shell。
-本分支提供独立的 MDIO-only 和只读 I/O 测试 profile。最新异机日志已生成 MDIO/SFC
-驱动目标文件，但在内核链接时遇到 MTD 块转换注册符号缺失；本轮补丁修正这一配置组合。
-**修复后的完整内核/FIT 尚未编译通过，新外设尚未实机验证；四口收发与持久安装仍未实现。**
+2026-09-18 新实机日志确认 MDIO-only FIT 已进入 shell，CPU0 缓存目录可见，
+两条 MDIO 总线读到有效 C22 ID，第二条总线也读到匹配的 C45 ID。
+这不等于四口 Ethernet 收发已实现；NAND、双核和长期稳定性仍未验证。
+本轮新增显式只读链路快照，用逐口插拔确认 PHY 地址与物理插座的关系。
+**新增链路采集代码仅完成本地静态/解释式测试，尚未编译或实机验证。**
 
 | profile | 内容 |
 |---|---|
@@ -18,14 +19,16 @@
 
 ## 文档入口
 
-[MDIO-only 构建、RAM 启动和验收](docs/MDIO-BRINGUP.md) 是当前优先测试入口。
+[PHY 实测结果与逐口链路映射](docs/PORT-MAPPING.md) 是当前测试入口。
+[MDIO-only 构建、RAM 启动和验收](docs/MDIO-BRINGUP.md) 保留初始 ID 诊断步骤；
+其中早期“未编译/未启动”的状态由本次新实机记录更新。
 [只读 I/O 测试](docs/IO-BRINGUP.md) 保留为之后的 NAND 独立验证步骤。
 [研究记录](docs/RESEARCH.md) 保留全部历史反馈、根因与每轮验证限制。
 [闪存证据](docs/FLASH-EVIDENCE.md) 只包含可公开的硬件字段和校验值。
 配置种子为 [基础](docs/build.config)、[MDIO-only](docs/build-mdio.config)
 和 [I/O](docs/build-io.config)；均为顶层 `.config` 的起点，不是内核配置。
 
-## MTD 链接错误：register_mtd_blktrans_devs
+## 历史构建问题：register_mtd_blktrans_devs
 
 2026-09-18 的 `build-skd840n-mdio-kernel-retry.log` 已越过配置问答和驱动 C 编译。
 `undefined reference to register_mtd_blktrans_devs` 来自 generic 402 补丁无条件调用
@@ -34,7 +37,7 @@
 
 新增 target 补丁 140：当 `CONFIG_MTD_BLKDEVS` 关闭时提供空 inline hook；
 启用时保留原外部声明。不打开 MTD_BLOCK/MTD_BLOCK_RO，不改 NAND 命令白名单。
-详细来源、已验证阶段及限制见 [研究记录](docs/RESEARCH.md) 末节。
+详细来源与当时的验证限制见 [历史研究记录](docs/RESEARCH-20260918-HISTORY.md) 末节。
 
 在编译机同步当前分支后，保留已有 `.config` 和 feeds，在 Bash 中重试：
 
@@ -140,6 +143,7 @@ cat /sys/kernel/debug/clk/clk_summary
 ## 本地检查
 
 ```sh
+PYTHONDONTWRITEBYTECODE=1 python3 target/linux/zx279133/tests/test_phy_link.py
 PYTHONDONTWRITEBYTECODE=1 python3 target/linux/zx279133/tests/test_mtd_blktrans.py
 PYTHONDONTWRITEBYTECODE=1 python3 target/linux/zx279133/tests/test_handoff.py
 PYTHONDONTWRITEBYTECODE=1 python3 target/linux/zx279133/tests/test_readonly_io.py

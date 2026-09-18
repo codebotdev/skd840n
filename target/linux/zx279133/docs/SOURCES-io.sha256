@@ -13,7 +13,7 @@
 # drivers/mtd/nand/spi/winbond.c: 46bc06d674c0dd45fb8b46d78d51ce47bf5347a0
 # Stock input hashes and limits: FLASH-EVIDENCE.md; raw data not committed.
 # Local adapted code/config/tests, SHA256:
-2ea9ab50b3f7ba60c6299091de74ffae24e351ae5d2ea4ad7e6452bebbc2d705  files-6.12/drivers/misc/skd840n-mdio-diag.c
+1e9e64319a23adf5495f66794d932e6e9c4b7e1216b5ef4abf4378a007549cd1  files-6.12/drivers/misc/skd840n-mdio-diag.c
 dfb38f80d3b1a0bbc763a46de68574a4e65281b195f38a1b27d8adcdb5b80739  files-6.12/drivers/spi/spi-skd840n-ro.c
 ea5281d5c706c3b9df220a6045eeaff89a85159c024c748a83d4e562bc958989  patches-6.12/120-skd840n-readonly-io.patch
 d0177ef0dcb73f1e020f30d41fad35c5f35ed4f84459ea59ffb50fbcb64582d4  dts/zx279133-skyworth-sk-d840n-io.dts

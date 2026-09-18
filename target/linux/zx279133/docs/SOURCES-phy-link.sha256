@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# Run from target/linux/zx279133: sha256sum -c docs/SOURCES-phy-link.sha256
+# Register definitions and protocol references: gregkh/linux tag v6.12.103
+# drivers/net/phy/realtek.c blob: 8ce5705af69c597e6cc987c900ac90ef86c94a85
+# drivers/net/phy/phy-c45.c blob: 5695935fdce97ea6a6fa8b8798a2fbe475b7fd0d
+# include/uapi/linux/mdio.h blob: f0d3f268240d867e2f0f7447d44689e89b345267
+# https://github.com/gregkh/linux/blob/v6.12.103/drivers/net/phy/realtek.c
+# https://github.com/gregkh/linux/blob/v6.12.103/drivers/net/phy/phy-c45.c
+# https://github.com/gregkh/linux/blob/v6.12.103/include/uapi/linux/mdio.h
+# https://github.com/gregkh/linux/blob/v6.12.103/include/uapi/linux/mii.h
+# Initial MDIO source at 9091062: f675eb5d17103468d39e2a3f3630bc2c9028eb8d
+# MDIO protocol provenance retained in SOURCES-io.sha256.
+# The historical research archive retains blob faf0fb8a91545a90bcaf6f9c0e5d8e70451d7bf6.
+1e9e64319a23adf5495f66794d932e6e9c4b7e1216b5ef4abf4378a007549cd1  files-6.12/drivers/misc/skd840n-mdio-diag.c
+42930260d9c040b2d9bdb0275e2e7656f435d7b513533050b00bb21a02def2fe  base-files/usr/sbin/skd840n-port-map
+9bf8ae6102627a8ba8315eff546ff71e2155a5644752f4bf06615cdd3211c70e  tests/test_phy_link.py
+4c47c465fa52e5eaec57f42dc27a4e7107581042d00cdb6664565c44e1d07e8c  docs/PORT-MAPPING.md
+fc89a64c8fe45b31b9c969ee1924c92acc570ec7f856828fd09134cc05601b60  docs/RESEARCH.md
+615f8d44c03c616953d55bf7898f34f9584986c7866a0928956b8044a527642f  README.md
