@@ -3,7 +3,8 @@
 本 target 基于 ImmortalWrt **v25.12.2 / Linux 6.12.103**，目标是让
 SK-D840N 使用原厂 U-Boot 启动现代内核，进入串口上的 ImmortalWrt 用户空间。
 这是四网口有线路由器适配的第一步，**目前不支持以太网、光口和持久安装**。
-已开始异机构建，尚无完整编译成功或实机启动记录；本地检查不能替代这些验证。
+异机日志已确认内嵌 initramfs 的内核 Image 和板级 DTB 生成成功，尚在排查 FIT 打包；
+尚无完整固件构建成功或实机启动记录。本地检查不能替代这些验证。
 
 实现和问题见 [研究记录](docs/RESEARCH.md)，配置种子见
 [build.config](docs/build.config)。没有导入原厂二进制内核、模块、微码或本机身份数据。
@@ -74,6 +75,15 @@ make -j20
 一般不需要清理工具链。若仍出现原接口名，先确认当前 Git 提交和源码中该调用已更新；
 如 build_dir 仍保留旧源文件，再执行 `make target/linux/clean` 并重新构建内核。
 这只清理内核构建目录，无需运行整个仓库的 `make clean`。
+
+### FIT 打包报找不到 image-.dtb
+
+如果日志已经生成 `image-zx279133-skyworth-sk-d840n.dtb`，但 mkits.sh 的 `-d`
+参数却是 `image-.dtb`，这是旧版 `KERNEL_INITRAMFS :=` 过早展开 `DEVICE_DTS` 导致的。
+后续修正改为延迟展开的 `KERNEL_INITRAMFS =`，在设备 profile 赋值后取得板级 DTB 名称。
+
+同步修正后，在编译机重新运行 `make -j1 V=s`，无需清理已有内核或手动复制/改名 DTB。
+确认新日志中的 `mkits.sh -d` 指向 `image-zx279133-skyworth-sk-d840n.dtb`，再检查最终 FIT。
 
 预期主产物在 `bin/targets/zx279133/generic/`，文件名以
 `skyworth_sk-d840n-initramfs-fit.itb` 结尾（前缀由发行版配置决定）。

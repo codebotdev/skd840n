@@ -278,6 +278,40 @@ int→pointer 错误。这里不能用强转或关闭警告处理；根因是初
 下一步：编译机同步提交，先 `make -j1 V=s target/linux/compile`，成功后 `make -j20`。
 如仍有错误，继续收集第一处实际诊断，避免只保留末尾的递归 make Error 2。
 
+## 2026-09-18：Image / DTB 已生成，修正 FIT 设备树路径
+
+用户日志提供了新的异机验证结果：内嵌 initramfs 的内核完成链接并生成
+`arch/arm64/boot/Image`；板级 DTS 完成预处理和 dtc，输出
+`image-zx279133-skyworth-sk-d840n.dtb`。Image header/占用检查也已通过，随后执行 gzip。
+失败发生在 FIT 打包：`mkits.sh -d` 得到了不存在的 `image-.dtb`，mkimage 因无法读取
+该路径退出。本轮不是内核编译错误，也不是设备树语法错误。
+
+### 原因与修改
+
+`include/image.mk` 中的设备处理顺序是 Device/Init → Device/Default → 具体 Device。
+Init 清空 DEVICE_DTS，板级 profile 稍后才将其设为 `zx279133-skyworth-sk-d840n`。
+旧版在 Default 中使用立即赋值 `KERNEL_INITRAMFS := ... $$(DEVICE_DTS) ...`，
+经 eval 解析赋值时，设备名仍为空，错误路径因此固化进流水线。
+
+将 `image/Makefile` 中该赋值改为递归赋值 `KERNEL_INITRAMFS = ...`，保留变量的延迟
+展开，让设备规则导出流水线时取得已经设置的 DEVICE_DTS；同时添加原因注释。
+该模式与仓库中 microchipsw 等 FIT 目标的延迟展开写法一致。
+没有修改 mkits.sh、公共镜像规则、DTS、加载地址或镜像大小限制。
+
+### 验证与下一步
+
+- 静态核对 Device 调用顺序、Device/ExportVar 和 Build/fit-its 的路径传递。
+- 用 Python 对这条赋值及其先后顺序建立最小展开示例：旧版得到 `image-.dtb`，
+  修正版得到 `image-zx279133-skyworth-sk-d840n.dtb`。这不是完整 GNU make 执行验证。
+- 将示例从当前规则得出的 DTB 路径交给 mkits.sh，仅生成临时 ITS 文本，确认
+  incbin 路径、conf@133 与 fdt@133 引用正确。未生成 FIT 二进制。
+- Git 空白检查通过；未在本地运行 make、编译器、dtc 或 mkimage。
+
+此前硬编码正确 DTB 路径的 ITS 检查不能覆盖 Makefile 变量展开时机的问题，
+本次明确记录这一验证局限。用户同步修复后直接 `make -j1 V=s` 重试即可，
+无需清理内核，也不通过手动生成 `image-.dtb` 绕过错误。
+最终 FIT 成功生成、完整构建成功和实机启动仍待确认。
+
 ### 后续每轮追加格式
 
 ```text

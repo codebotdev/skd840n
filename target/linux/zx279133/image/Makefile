@@ -22,7 +22,8 @@ define Device/Default
   DEVICE_DTS_DELIMITER := @
   DEVICE_FDT_NUM := 133
   KERNEL_INITRAMFS_SUFFIX := -fit.itb
-  KERNEL_INITRAMFS := kernel-bin | zx279133-check-image | gzip | fit gzip $$(KDIR)/image-$$(DEVICE_DTS).dtb | zx279133-check-fit
+  # DEVICE_DTS is assigned by the device profile after Device/Default.
+  KERNEL_INITRAMFS = kernel-bin | zx279133-check-image | gzip | fit gzip $$(KDIR)/image-$$(DEVICE_DTS).dtb | zx279133-check-fit
   IMAGES :=
 endef
 
