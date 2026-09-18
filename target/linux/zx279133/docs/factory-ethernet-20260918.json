@@ -1,0 +1,448 @@
+{
+  "schema_version": 1,
+  "scope": "Sanitized development evidence; not a runtime configuration or register write list",
+  "archive": {
+    "name": "skd840n-test.tar",
+    "bytes": 2232320,
+    "sha256": "be768b0721fb8c7ce709102bb66d8d3ff5b5a49915a2fc462afad54cf258638e",
+    "verified_manifest_entries": 70
+  },
+  "sources": [
+    {
+      "path": "FACTORY-ETHERNET-RESEARCH.md",
+      "sha256": "77c2f1c6e9e1927a5fb6e89a33288b85c20715640cd8d645c085b106464fc068"
+    },
+    {
+      "path": "evidence/15-port-info.txt",
+      "sha256": "8c510ee780d33a4ee0ef5e226ece663670e236e36b5f84c18d508d2de166aea3"
+    },
+    {
+      "path": "evidence/22-smac-3.txt",
+      "sha256": "988924c2f3860c5273b981c7fa9c66699db1622469e3fcaf29038590d75ea874"
+    },
+    {
+      "path": "evidence/18-idm-addr_stat.txt",
+      "sha256": "b0369cc04715da7d68b22e9bf1cfa3210aaf9319bfa9b7ef34e61085bab2f906"
+    },
+    {
+      "path": "evidence/18-idm-config_print.txt",
+      "sha256": "fd59387b66673273e5953fe8d445c5420d8280fc132a4f821e5e5e8f06be3ba6"
+    },
+    {
+      "path": "evidence/26-protocol-queue-3.txt",
+      "sha256": "73c2c15de0e3f0d24e936f84497bffb5b537d5c2c7725a2b582b4d575e709e7b"
+    },
+    {
+      "path": "evidence/28-packet-eth3.txt",
+      "sha256": "73e0550b153427676f1ebde61eb6a2d8bc55ab469b5a56c27324a404f69ee2e5"
+    },
+    {
+      "path": "evidence/06-symbols.txt",
+      "sha256": "d2287b096461948ac956b9ab4379bca5df7d9fe47adce727360b4cee0b3e71a1"
+    },
+    {
+      "path": "evidence/19-microcode.txt",
+      "sha256": "bc441203f6e5779dee83c1f07894cbb92c50cb3c731861a06d57116c759e4ae7"
+    },
+    {
+      "path": "evidence/33-integrity.txt",
+      "sha256": "fc9364b953b107575fefa57e8bdff9ed340c162044d938a545b1ec8a5ce8939d"
+    },
+    {
+      "path": "evidence/factory.dtb",
+      "sha256": "e5c6ecce120afb50a51b696a84d8d7866264f292364dc784d3f51497772cfd1b"
+    }
+  ],
+  "factory_port_anchor": {
+    "panel_label": "lan4",
+    "factory_netdev": "eth3",
+    "sdk_port": 3,
+    "smac_index": 3,
+    "speed_mbps": 1000,
+    "duplex": "full",
+    "basis": "Factory report user-confirmed LAN4 cable; SDK link query, SMAC3 counters and bidirectional eth3 ICMP",
+    "prior_mdio_evidence": {
+      "document": "port-map-20260918.json",
+      "mmio": "0x14f01000",
+      "phy_addr": "0x0d",
+      "phy_id": "0x84b95032"
+    },
+    "serdes_mode": null,
+    "modern_kernel_dma_verified": false
+  },
+  "factory_software_netdev_to_sdk": {
+    "eth0": 4,
+    "eth1": 1,
+    "eth2": 2,
+    "eth3": 3
+  },
+  "unconfirmed_physical_sdk_candidates": {
+    "lan2": {
+      "netdev": "eth1",
+      "sdk_port": 1,
+      "smac_index": 1,
+      "verified_in_this_factory_capture": false
+    }
+  },
+  "idm_geometry": {
+    "rx_queues": 24,
+    "tx_queues": 4,
+    "descriptor_mode": 0,
+    "descriptor_bytes": 32,
+    "descriptor_depth": 1024,
+    "rx_normal_bp_depth": 8192,
+    "rx_jumbo_bp_depth": 4096,
+    "tx_bp_depth": 1024,
+    "tx_free_queues": 3,
+    "tx_free_depth": 65536,
+    "bp_bytes": 4,
+    "normal_buffer_bytes": 2304,
+    "jumbo_buffer_bytes": 16128,
+    "rx_normal_buffers": 4096,
+    "rx_jumbo_buffers": 128,
+    "tx_normal_buffers": 1024,
+    "regions": [
+      {
+        "name": "cpu_rx_desc",
+        "bytes": 786432
+      },
+      {
+        "name": "cpu_tx_desc",
+        "bytes": 131072
+      },
+      {
+        "name": "rx_normal_bp",
+        "bytes": 32768
+      },
+      {
+        "name": "rx_jumbo_bp",
+        "bytes": 16384
+      },
+      {
+        "name": "tx_bp",
+        "bytes": 4096
+      },
+      {
+        "name": "tx_free",
+        "bytes": 786432
+      },
+      {
+        "name": "rx_normal_payload",
+        "bytes": 9437184
+      },
+      {
+        "name": "rx_jumbo_payload",
+        "bytes": 2064384
+      },
+      {
+        "name": "tx_payload",
+        "bytes": 2359296
+      }
+    ],
+    "total_bytes": 15618048,
+    "runtime_addresses_omitted": true,
+    "hardware_recv_desc": "cpu_tx_desc",
+    "hardware_sent_desc": "cpu_rx_desc"
+  },
+  "irq": {
+    "queue_to_group": [
+      0,
+      0,
+      3,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      3,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      2,
+      3,
+      0,
+      0,
+      0
+    ],
+    "group_masks": [
+      "0x071ffbfb",
+      "0x00200000",
+      "0x00400000",
+      "0x00800404"
+    ],
+    "gic_intids": [
+      33,
+      34,
+      35,
+      36
+    ],
+    "dts_spi_indices": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "groups_are_linux_cpu_ids": false
+  },
+  "protocol_configuration": {
+    "sdk_ports_observed": [
+      1,
+      3
+    ],
+    "named_arp_icmp_dhcp_cpu_qid": 6,
+    "exact_queue_taken_by_captured_icmp": null,
+    "notes": "Named protocol table only; L3_LOCAL and other priorities can select another queue."
+  },
+  "packet_baseline": {
+    "capture_netdev": "eth3",
+    "icmp_requests": 3,
+    "icmp_replies": 3,
+    "frames": 6,
+    "capture_kernel_drops": 0,
+    "visible_ethernet_frame_bytes": 98,
+    "independent_sw_capture_frames": 3,
+    "proves_raw_dma_payload_layout": false
+  },
+  "microcode": {
+    "factory_running_version": "0x0001.0x0108.0x31ba6a03",
+    "factory_build_string": "24/4/8 17",
+    "backup_mcode_bytes": 103456,
+    "backup_mcode_sha256": "251acd2858aa1486dac66386842285a3e4aef55a5335891da5d595b937084db0",
+    "backup_mcode_crc32": "c839b946",
+    "backup_bytes_equal_running_image_proven": false,
+    "community_optional_rx_hash_crc32": "ef1d7647",
+    "community_ref": "07f8687248578d4be6931c665ff5d08bb6cc3d9d",
+    "crc_gate_scope": "Optional RX hash program injection, not a blanket rejection of all other base firmware",
+    "apply_community_rx_hash_patches_to_backup_microcode": false
+  },
+  "binary_analysis": {
+    "backup_sha256": "0d168f3691fe0fa0e5496b7cfa3163fc27c8d198a988a3d11f5c80fb4e367d64",
+    "module_name": "np_133.ko",
+    "module_bytes": 5208864,
+    "module_sha256": "732425ba1b0cf902af72402054f4f50628c487f5134f3f1e4647871646c897e1",
+    "same_name_text_symbols_with_common_live_offset": 770,
+    "proves_live_module_byte_identity": false,
+    "function_fingerprints": [
+      {
+        "name": "dump_desc_rx",
+        "section": ".text",
+        "offset": "0xf6d0",
+        "size": 200,
+        "sha256": "ce8e708bdc386b23d70cf66581a82ea7e78eaca4d4e9b73052b85594ee8d0d11"
+      },
+      {
+        "name": "dump_desc_tx",
+        "section": ".text",
+        "offset": "0xf798",
+        "size": 252,
+        "sha256": "d37e49de9c099cc95bd385a8c5fa703b0dfe073370f52ff24d645bc37cd03311"
+      },
+      {
+        "name": "idm_net_lan_tx_direct",
+        "section": ".text",
+        "offset": "0x1196c",
+        "size": 1576,
+        "sha256": "4d09caea4b67f53de0bda4bddb89d7ef0fd571dd0b996e8e34f9b3c8cc974b73"
+      },
+      {
+        "name": "sw_port_change_to_smac_index",
+        "section": ".text",
+        "offset": "0x120c44",
+        "size": 172,
+        "sha256": "193b0a6ec44faa8364ee582a093c6b53843b1dd25c4474e30db25ecb2bc8539e"
+      },
+      {
+        "name": "outport_and_real_port_map_table_set",
+        "section": ".text",
+        "offset": "0xc05b8",
+        "size": 304,
+        "sha256": "54115bb63d6ffdbc165f017d5766312c2ae3be0e5e7d32670bf338d19a84c775"
+      },
+      {
+        "name": "outport_and_real_port_map_table_init",
+        "section": ".text",
+        "offset": "0xc06e8",
+        "size": 348,
+        "sha256": "b261f0b43c8294f94f955e7ed23b5ff87486337c4aa41df1340183710e936d40"
+      }
+    ],
+    "descriptor_view": "CPU numeric u32 words printed by stock dump_desc_rx/tx, not raw DMA byte order",
+    "rx_fields": [
+      {
+        "name": "address",
+        "word": 0,
+        "mask": "0xffffffff",
+        "shift": 0
+      },
+      {
+        "name": "packet_length",
+        "word": 1,
+        "mask": "0x00003fff",
+        "shift": 0
+      },
+      {
+        "name": "address_type",
+        "word": 1,
+        "mask": "0x00004000",
+        "shift": 14
+      },
+      {
+        "name": "omci_flag",
+        "word": 1,
+        "mask": "0x00008000",
+        "shift": 15
+      },
+      {
+        "name": "source_port",
+        "word": 1,
+        "mask": "0x003f0000",
+        "shift": 16
+      },
+      {
+        "name": "checksum_correct",
+        "word": 1,
+        "mask": "0x00400000",
+        "shift": 22
+      },
+      {
+        "name": "output",
+        "word": 1,
+        "mask": "0x1f800000",
+        "shift": 23
+      },
+      {
+        "name": "reorder_flag",
+        "word": 1,
+        "mask": "0x20000000",
+        "shift": 29
+      },
+      {
+        "name": "gemport_llid_id",
+        "word": 2,
+        "mask": "0x0000ffff",
+        "shift": 0
+      }
+    ],
+    "tx_fields": [
+      {
+        "name": "address",
+        "word": 0,
+        "mask": "0xffffffff",
+        "shift": 0
+      },
+      {
+        "name": "packet_length",
+        "word": 1,
+        "mask": "0x00007ffe",
+        "shift": 1
+      },
+      {
+        "name": "address_type",
+        "word": 1,
+        "mask": "0x00000001",
+        "shift": 0
+      },
+      {
+        "name": "offset",
+        "word": 1,
+        "mask": "0x00ff0000",
+        "shift": 16
+      },
+      {
+        "name": "checksum_enable",
+        "word": 1,
+        "mask": "0x00008000",
+        "shift": 15
+      },
+      {
+        "name": "inport",
+        "word": 1,
+        "mask": "0x3f000000",
+        "shift": 24
+      },
+      {
+        "name": "ipv4_ipv6_flag",
+        "word": 1,
+        "mask": "0x40000000",
+        "shift": 30
+      },
+      {
+        "name": "tcp_udp_flag",
+        "word": 1,
+        "mask": "0x80000000",
+        "shift": 31
+      },
+      {
+        "name": "omci_flag",
+        "word": 2,
+        "mask": "0x00000001",
+        "shift": 0
+      },
+      {
+        "name": "l3_offset",
+        "word": 2,
+        "mask": "0x000000fe",
+        "shift": 1
+      },
+      {
+        "name": "l4_offset",
+        "word": 2,
+        "mask": "0x0000fe00",
+        "shift": 9
+      },
+      {
+        "name": "output_port_valid",
+        "word": 2,
+        "mask": "0x00400000",
+        "shift": 22
+      },
+      {
+        "name": "output_port",
+        "word": 2,
+        "mask": "0x003f0000",
+        "shift": 16
+      },
+      {
+        "name": "gemport_llid_id",
+        "word": 6,
+        "mask": "0x0000ffff",
+        "shift": 0
+      },
+      {
+        "name": "queue_id",
+        "word": 6,
+        "mask": "0x01ff0000",
+        "shift": 16
+      }
+    ],
+    "outport_table": {
+      "id": "0x27",
+      "real_port_bits": [
+        0,
+        5
+      ],
+      "real_queue_bits": [
+        6,
+        14
+      ],
+      "current_runtime_entries_proven": false
+    }
+  },
+  "remaining": [
+    "DMA byte order and ownership handoff",
+    "ring producer/consumer and safe DMA stop",
+    "normal CPU TX complete metadata and runtime route tables",
+    "minimal MAC/SerDes and NP/PPU initialization",
+    "new-kernel Ethernet traffic, buffer recycling and stability"
+  ]
+}

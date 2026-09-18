@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# Run from target/linux/zx279133: sha256sum -c docs/SOURCES-idm-core.sha256
+# Evidence/binary fingerprints: docs/factory-ethernet-20260918.json
+# No proprietary binary, raw factory capture or device identity is included.
+58321fb20994a3af5ebe2bcde6b863e0c240e38f29e205af1539b5c16969e574  files-6.12/drivers/net/ethernet/zte/skd840n-idm-core.h
+a13981d2ca7a5927a53893c77141115f6094ac8624856d27a1841ea27425f9b8  tools/idm_core.py
+9fb7f81838596f84520d238ec66cf41a3030903885592a47209990b20fb85ea2  tests/idm_c_model.py
+78a05636a144d16bb759769c803a210cc34a5813d33da5b9438b59ddded715ff  tests/test_idm_core.py
+cc8be0214e5a00e6329302b11a4ba1bdafcac8ecfb39ca4a8a8feaa9970dd75f  docs/factory-ethernet-20260918.json
+4695814d13aec258444f4c8bf63103de2e337d24a7166921dc62e9f103f27b92  docs/IDM-CORE.md
+8e5b0bc01ae3e09553db90918a1a57caca897c64bb561975fa6c6c4b6c1d4530  docs/RESEARCH.md
